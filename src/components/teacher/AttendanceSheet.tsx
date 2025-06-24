@@ -2,161 +2,177 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { CheckCircle, XCircle, Clock, Save, Search } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Save, Calendar, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Student {
   id: string;
   name: string;
-  rollNumber: string;
-  status?: 'present' | 'absent' | 'late';
+  roll: string;
+  status: 'present' | 'absent' | 'late' | null;
+  remarks?: string;
 }
 
 const AttendanceSheet: React.FC = () => {
   const { toast } = useToast();
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
-
-  // Mock data - in real app, this would come from API
-  const classes = [
-    { id: '1', name: 'Class 6 - A', grade: '6', section: 'A' },
-    { id: '2', name: 'Class 7 - B', grade: '7', section: 'B' },
-    { id: '3', name: 'Class 8 - A', grade: '8', section: 'A' },
-  ];
-
-  const subjects = [
-    { id: '1', name: 'Mathematics / গণিত', code: 'MATH' },
-    { id: '2', name: 'English / ইংরেজি', code: 'ENG' },
-    { id: '3', name: 'Science / বিজ্ঞান', code: 'SCI' },
-    { id: '4', name: 'Bengali / বাংলা', code: 'BAN' },
-  ];
-
+  
   const [students, setStudents] = useState<Student[]>([
-    { id: '1', name: 'আহমেদ করিম', rollNumber: '001' },
-    { id: '2', name: 'ফাতিমা খাতুন', rollNumber: '002' },
-    { id: '3', name: 'রহিম উদ্দিন', rollNumber: '003' },
-    { id: '4', name: 'সালমা বেগম', rollNumber: '004' },
-    { id: '5', name: 'নাসির আহমেদ', rollNumber: '005' },
-    { id: '6', name: 'রুমানা আক্তার', rollNumber: '006' },
-    { id: '7', name: 'তানভীর হাসান', rollNumber: '007' },
-    { id: '8', name: 'সুমাইয়া খান', rollNumber: '008' },
+    { id: '1', name: 'আহমেদ করিম', roll: '01', status: null },
+    { id: '2', name: 'ফাতিমা খাতুন', roll: '02', status: null },
+    { id: '3', name: 'রহিম উদ্দিন', roll: '03', status: null },
+    { id: '4', name: 'সালমা বেগম', roll: '04', status: null },
+    { id: '5', name: 'করিম হোসেন', roll: '05', status: null },
+    { id: '6', name: 'নাসির আহমেদ', roll: '06', status: null },
+    { id: '7', name: 'রাহেলা খাতুন', roll: '07', status: null },
+    { id: '8', name: 'মাহবুব আলম', roll: '08', status: null }
   ]);
 
-  const updateAttendance = (studentId: string, status: 'present' | 'absent' | 'late') => {
-    setStudents(prev => 
-      prev.map(student => 
-        student.id === studentId ? { ...student, status } : student
-      )
-    );
+  const classes = ['Class 6-A', 'Class 6-B', 'Class 7-A', 'Class 7-B'];
+  const subjects = ['Mathematics', 'English', 'Bangla', 'Science', 'Social Studies'];
+
+  const updateStudentStatus = (studentId: string, status: 'present' | 'absent' | 'late') => {
+    setStudents(students.map(student => 
+      student.id === studentId ? { ...student, status } : student
+    ));
+  };
+
+  const updateStudentRemarks = (studentId: string, remarks: string) => {
+    setStudents(students.map(student => 
+      student.id === studentId ? { ...student, remarks } : student
+    ));
   };
 
   const markAllPresent = () => {
-    setStudents(prev => 
-      prev.map(student => ({ ...student, status: 'present' as const }))
-    );
-    toast({
-      title: "All students marked present",
-      description: "সকল শিক্ষার্থীকে উপস্থিত হিসেবে চিহ্নিত করা হয়েছে।",
-    });
+    setStudents(students.map(student => ({ ...student, status: 'present' as const })));
+  };
+
+  const markAllAbsent = () => {
+    setStudents(students.map(student => ({ ...student, status: 'absent' as const })));
   };
 
   const saveAttendance = () => {
     if (!selectedClass || !selectedSubject) {
       toast({
-        title: "Please select class and subject",
-        description: "ক্লাস এবং বিষয় নির্বাচন করুন।",
-        variant: "destructive",
+        title: "Error",
+        description: "Please select class and subject",
+        variant: "destructive"
       });
       return;
     }
 
-    const attendanceData = students.map(student => ({
-      studentId: student.id,
-      classId: selectedClass,
-      subjectId: selectedSubject,
-      date: attendanceDate,
-      status: student.status || 'absent',
-    }));
+    const unmarkedStudents = students.filter(s => !s.status);
+    if (unmarkedStudents.length > 0) {
+      toast({
+        title: "Warning",
+        description: `${unmarkedStudents.length} students are not marked`,
+        variant: "destructive"
+      });
+      return;
+    }
 
-    console.log('Saving attendance:', attendanceData);
-    
+    // Here you would typically save to a backend
+    console.log('Saving attendance:', {
+      class: selectedClass,
+      subject: selectedSubject,
+      date: attendanceDate,
+      attendance: students.map(s => ({
+        studentId: s.id,
+        status: s.status,
+        remarks: s.remarks
+      }))
+    });
+
     toast({
-      title: "Attendance saved successfully!",
-      description: "উপস্থিতি সফলভাবে সংরক্ষিত হয়েছে।",
+      title: "Success",
+      description: "Attendance saved successfully",
     });
   };
 
-  const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.rollNumber.includes(searchTerm)
-  );
-
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'present': return 'bg-green-100 text-green-800';
-      case 'absent': return 'bg-red-100 text-red-800';
-      case 'late': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const getAttendanceStats = () => {
+    const present = students.filter(s => s.status === 'present').length;
+    const absent = students.filter(s => s.status === 'absent').length;
+    const late = students.filter(s => s.status === 'late').length;
+    const total = students.length;
+    
+    return { present, absent, late, total };
   };
 
-  const getStatusIcon = (status?: string) => {
+  const stats = getAttendanceStats();
+
+  const getStatusIcon = (status: string | null) => {
     switch (status) {
-      case 'present': return <CheckCircle className="h-4 w-4" />;
-      case 'absent': return <XCircle className="h-4 w-4" />;
-      case 'late': return <Clock className="h-4 w-4" />;
-      default: return null;
+      case 'present':
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
+      case 'absent':
+        return <XCircle className="h-5 w-5 text-red-600" />;
+      case 'late':
+        return <Clock className="h-5 w-5 text-yellow-600" />;
+      default:
+        return <div className="h-5 w-5 border rounded-full border-gray-300" />;
     }
   };
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Mark Attendance / উপস্থিতি নেওয়া</h2>
+        <div className="flex space-x-4">
+          <Button onClick={markAllPresent} variant="outline">
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Mark All Present
+          </Button>
+          <Button onClick={markAllAbsent} variant="outline">
+            <XCircle className="mr-2 h-4 w-4" />
+            Mark All Absent
+          </Button>
+          <Button onClick={saveAttendance}>
+            <Save className="mr-2 h-4 w-4" />
+            Save Attendance
+          </Button>
+        </div>
+      </div>
+
+      {/* Class and Subject Selection */}
       <Card>
-        <CardHeader>
-          <CardTitle>Mark Attendance / উপস্থিতি নেওয়া</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="class">Select Class / ক্লাস নির্বাচন করুন</Label>
+              <label className="block text-sm font-medium mb-2">Class / ক্লাস</label>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.map(cls => (
-                    <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </SelectItem>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls} value={cls}>{cls}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="subject">Select Subject / বিষয় নির্বাচন করুন</Label>
+              <label className="block text-sm font-medium mb-2">Subject / বিষয়</label>
               <Select value={selectedSubject} onValueChange={setSelectedSubject}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjects.map(subject => (
-                    <SelectItem key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </SelectItem>
+                  {subjects.map((subject) => (
+                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="date">Date / তারিখ</Label>
+              <label className="block text-sm font-medium mb-2">Date / তারিখ</label>
               <Input
                 type="date"
                 value={attendanceDate}
@@ -164,83 +180,139 @@ const AttendanceSheet: React.FC = () => {
               />
             </div>
           </div>
-
-          <div className="flex justify-between items-center">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search students / শিক্ষার্থী খুঁজুন"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-64"
-              />
-            </div>
-            
-            <div className="space-x-2">
-              <Button variant="outline" onClick={markAllPresent}>
-                Mark All Present
-              </Button>
-              <Button onClick={saveAttendance}>
-                <Save className="mr-2 h-4 w-4" />
-                Save Attendance
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
-      {selectedClass && selectedSubject && (
+      {/* Attendance Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Student List / শিক্ষার্থী তালিকা</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredStudents.map(student => (
-                <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="font-medium">{student.name}</div>
-                    <Badge variant="outline">Roll: {student.rollNumber}</Badge>
-                    {student.status && (
-                      <Badge className={getStatusColor(student.status)}>
-                        {getStatusIcon(student.status)}
-                        <span className="ml-1 capitalize">{student.status}</span>
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant={student.status === 'present' ? 'default' : 'outline'}
-                      onClick={() => updateAttendance(student.id, 'present')}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Present
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={student.status === 'late' ? 'default' : 'outline'}
-                      onClick={() => updateAttendance(student.id, 'late')}
-                    >
-                      <Clock className="h-4 w-4 mr-1" />
-                      Late
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={student.status === 'absent' ? 'destructive' : 'outline'}
-                      onClick={() => updateAttendance(student.id, 'absent')}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Absent
-                    </Button>
-                  </div>
-                </div>
-              ))}
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Users className="h-8 w-8 text-blue-600" />
+              <div>
+                <p className="text-sm text-gray-600">Total Students</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+              <div>
+                <p className="text-sm text-gray-600">Present</p>
+                <p className="text-2xl font-bold text-green-600">{stats.present}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <XCircle className="h-8 w-8 text-red-600" />
+              <div>
+                <p className="text-sm text-gray-600">Absent</p>
+                <p className="text-2xl font-bold text-red-600">{stats.absent}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-8 w-8 text-yellow-600" />
+              <div>
+                <p className="text-sm text-gray-600">Late</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.late}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Attendance Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Student Attendance / শিক্ষার্থীদের উপস্থিতি
+            {selectedClass && ` - ${selectedClass}`}
+            {selectedSubject && ` - ${selectedSubject}`}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Roll / রোল</TableHead>
+                <TableHead>Name / নাম</TableHead>
+                <TableHead>Status / অবস্থা</TableHead>
+                <TableHead>Actions / কার্যক্রম</TableHead>
+                <TableHead>Remarks / মন্তব্য</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {students.map((student) => (
+                <TableRow key={student.id}>
+                  <TableCell className="font-medium">{student.roll}</TableCell>
+                  <TableCell>{student.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      {getStatusIcon(student.status)}
+                      {student.status && (
+                        <Badge 
+                          variant={
+                            student.status === 'present' ? 'default' : 
+                            student.status === 'absent' ? 'destructive' : 'secondary'
+                          }
+                        >
+                          {student.status}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant={student.status === 'present' ? 'default' : 'outline'}
+                        onClick={() => updateStudentStatus(student.id, 'present')}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={student.status === 'absent' ? 'destructive' : 'outline'}
+                        onClick={() => updateStudentStatus(student.id, 'absent')}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={student.status === 'late' ? 'secondary' : 'outline'}
+                        onClick={() => updateStudentStatus(student.id, 'late')}
+                      >
+                        <Clock className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      placeholder="Add remarks..."
+                      value={student.remarks || ''}
+                      onChange={(e) => updateStudentRemarks(student.id, e.target.value)}
+                      className="w-48"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };

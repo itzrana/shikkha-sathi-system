@@ -7,6 +7,10 @@ import DashboardStats from '@/components/dashboard/DashboardStats';
 import AttendanceSheet from '@/components/teacher/AttendanceSheet';
 import AttendanceReport from '@/components/student/AttendanceReport';
 import AdminDashboard from '@/components/admin/AdminDashboard';
+import StudentManagement from '@/components/admin/StudentManagement';
+import TeacherManagement from '@/components/admin/TeacherManagement';
+import ClassManagement from '@/components/admin/ClassManagement';
+import AttendanceManagement from '@/components/admin/AttendanceManagement';
 
 const Layout: React.FC = () => {
   const { user } = useAuth();
@@ -37,42 +41,22 @@ const Layout: React.FC = () => {
         return <AttendanceReport />;
       
       case 'students':
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Students Management</h2>
-            <p className="text-gray-600">Student management features will be implemented here.</p>
-          </div>
-        );
+        return <StudentManagement />;
       
       case 'teachers':
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Teachers Management</h2>
-            <p className="text-gray-600">Teacher management features will be implemented here.</p>
-          </div>
-        );
+        return <TeacherManagement />;
       
       case 'classes':
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Classes Management</h2>
-            <p className="text-gray-600">Class management features will be implemented here.</p>
-          </div>
-        );
+        return <ClassManagement />;
+      
+      case 'attendance':
+        return <AttendanceManagement />;
       
       case 'my-classes':
         return (
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-4">My Classes / আমার ক্লাস</h2>
             <p className="text-gray-600">Your class information will be displayed here.</p>
-          </div>
-        );
-      
-      case 'attendance':
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Attendance Management</h2>
-            <p className="text-gray-600">Comprehensive attendance management features will be implemented here.</p>
           </div>
         );
       
