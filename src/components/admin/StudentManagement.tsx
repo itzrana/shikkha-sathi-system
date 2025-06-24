@@ -9,20 +9,19 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Trash2, Search, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Student {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  class: string;
   roll: string;
-  fatherName: string;
-  motherName: string;
+  class: string;
+  phone: string;
+  guardianName: string;
+  guardianPhone: string;
   address: string;
-  enrollmentDate: string;
   status: 'active' | 'inactive';
 }
 
@@ -32,74 +31,74 @@ const StudentManagement: React.FC = () => {
     {
       id: '1',
       name: 'আহমেদ করিম',
-      email: 'ahmed@school.edu.bd',
-      phone: '+880123456789',
-      class: 'Class 6-A',
+      email: 'ahmed.karim@student.com',
       roll: '01',
-      fatherName: 'মোহাম্মদ করিম',
-      motherName: 'ফাতিমা বেগম',
+      class: 'Class 6-A',
+      phone: '01712345678',
+      guardianName: 'করিম উদ্দিন',
+      guardianPhone: '01798765432',
       address: 'ঢাকা, বাংলাদেশ',
-      enrollmentDate: '2024-01-15',
       status: 'active'
     },
     {
       id: '2',
       name: 'ফাতিমা খাতুন',
-      email: 'fatima@school.edu.bd',
-      phone: '+880123456790',
-      class: 'Class 7-B',
-      roll: '05',
-      fatherName: 'আব্দুল রহমান',
-      motherName: 'সালমা খাতুন',
+      email: 'fatima.khatun@student.com',
+      roll: '02',
+      class: 'Class 6-A',
+      phone: '01723456789',
+      guardianName: 'আব্দুল খালেক',
+      guardianPhone: '01787654321',
       address: 'চট্টগ্রাম, বাংলাদেশ',
-      enrollmentDate: '2024-01-15',
       status: 'active'
     }
   ]);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClass, setSelectedClass] = useState('all');
   const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   const form = useForm({
     defaultValues: {
       name: '',
       email: '',
-      phone: '',
-      class: '',
       roll: '',
-      fatherName: '',
-      motherName: '',
+      class: '',
+      phone: '',
+      guardianName: '',
+      guardianPhone: '',
       address: ''
     }
   });
 
-  const classes = ['Class 6-A', 'Class 6-B', 'Class 7-A', 'Class 7-B', 'Class 8-A', 'Class 8-B'];
-
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.roll.includes(searchTerm);
-    const matchesClass = selectedClass === 'all' || student.class === selectedClass;
-    return matchesSearch && matchesClass;
-  });
+  const classes = ['Class 6-A', 'Class 6-B', 'Class 7-A', 'Class 7-B', 'Class 8-A'];
 
   const onSubmit = (data: any) => {
-    const newStudent: Student = {
-      id: (students.length + 1).toString(),
-      ...data,
-      enrollmentDate: new Date().toISOString().split('T')[0],
-      status: 'active' as const
-    };
-
-    setStudents([...students, newStudent]);
+    if (editingStudent) {
+      setStudents(students.map(s => 
+        s.id === editingStudent.id 
+          ? { ...editingStudent, ...data }
+          : s
+      ));
+      setEditingStudent(null);
+      toast({
+        title: "Success",
+        description: "Student updated successfully",
+      });
+    } else {
+      const newStudent: Student = {
+        id: (students.length + 1).toString(),
+        ...data,
+        status: 'active' as const
+      };
+      setStudents([...students, newStudent]);
+      toast({
+        title: "Success",
+        description: "Student added successfully",
+      });
+    }
+    
     form.reset();
     setIsAddingStudent(false);
-    
-    toast({
-      title: "Success",
-      description: "Student added successfully",
-    });
   };
 
   const deleteStudent = (id: string) => {
@@ -110,60 +109,71 @@ const StudentManagement: React.FC = () => {
     });
   };
 
+  const startEdit = (student: Student) => {
+    setEditingStudent(student);
+    form.reset(student);
+    setIsAddingStudent(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Student Management / শিক্ষার্থী ব্যবস্থাপনা</h2>
-        <div className="flex space-x-4">
-          <Sheet open={isAddingStudent} onOpenChange={setIsAddingStudent}>
-            <SheetTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Student
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-[600px] sm:w-[600px]">
-              <SheetHeader>
-                <SheetTitle>Add New Student / নতুন শিক্ষার্থী যোগ করুন</SheetTitle>
-              </SheetHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-6">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name / নাম</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter student name" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="email" placeholder="student@school.edu.bd" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+        <Sheet open={isAddingStudent} onOpenChange={setIsAddingStudent}>
+          <SheetTrigger asChild>
+            <Button onClick={() => {
+              setEditingStudent(null);
+              form.reset();
+            }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Student
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-[500px] sm:w-[500px]">
+            <SheetHeader>
+              <SheetTitle>
+                {editingStudent ? 'Edit Student / শিক্ষার্থী সম্পাদনা' : 'Add New Student / নতুন শিক্ষার্থী যোগ করুন'}
+              </SheetTitle>
+            </SheetHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-6">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name / পূর্ণ নাম</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="আহমেদ করিম" required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email / ইমেইল</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="email" placeholder="student@example.com" required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="phone"
+                    name="roll"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone / ফোন</FormLabel>
+                        <FormLabel>Roll Number / রোল নম্বর</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="+880123456789" />
+                          <Input {...field} placeholder="01" required />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -192,131 +202,128 @@ const StudentManagement: React.FC = () => {
                       </FormItem>
                     )}
                   />
+                </div>
 
-                  <FormField
-                    control={form.control}
-                    name="roll"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Roll Number / রোল নম্বর</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="01" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone / ফোন</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="01712345678" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="fatherName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Father's Name / পিতার নাম</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter father's name" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="guardianName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Guardian Name / অভিভাবকের নাম</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="করিম উদ্দিন" required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="motherName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mother's Name / মাতার নাম</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter mother's name" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="guardianPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Guardian Phone / অভিভাবকের ফোন</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="01798765432" required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address / ঠিকানা</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter address" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address / ঠিকানা</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="ঢাকা, বাংলাদেশ" required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <Button type="submit" className="w-full">Add Student</Button>
-                </form>
-              </Form>
-            </SheetContent>
-          </Sheet>
-        </div>
+                <Button type="submit" className="w-full">
+                  {editingStudent ? 'Update Student' : 'Add Student'}
+                </Button>
+              </form>
+            </Form>
+          </SheetContent>
+        </Sheet>
       </div>
 
-      {/* Search and Filter */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search students..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+      {/* Student Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Students</p>
+                <p className="text-2xl font-bold">{students.length}</p>
               </div>
+              <Users className="h-8 w-8 text-blue-600" />
             </div>
-            <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="All Classes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Classes</SelectItem>
-                {classes.map((cls) => (
-                  <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Students</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {students.filter(s => s.status === 'active').length}
+                </p>
+              </div>
+              <GraduationCap className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Students Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Students List / শিক্ষার্থীদের তালিকা ({filteredStudents.length})</CardTitle>
+          <CardTitle>Students List / শিক্ষার্থীদের তালিকা</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name / নাম</TableHead>
+                <TableHead>Roll / রোল</TableHead>
                 <TableHead>Class / ক্লাস</TableHead>
-                <TableHead>Roll</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
+                <TableHead>Guardian / অভিভাবক</TableHead>
+                <TableHead>Phone / ফোন</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStudents.map((student) => (
+              {students.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{student.name}</TableCell>
-                  <TableCell>{student.class}</TableCell>
                   <TableCell>{student.roll}</TableCell>
-                  <TableCell>{student.email}</TableCell>
-                  <TableCell>{student.phone}</TableCell>
+                  <TableCell>{student.class}</TableCell>
+                  <TableCell>{student.guardianName}</TableCell>
+                  <TableCell>{student.guardianPhone}</TableCell>
                   <TableCell>
                     <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
                       {student.status}
@@ -324,7 +331,7 @@ const StudentManagement: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => startEdit(student)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button 

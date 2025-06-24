@@ -6,258 +6,240 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Search, Filter, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Clock, Download, Search, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface AttendanceRecord {
   id: string;
   studentName: string;
-  class: string;
+  className: string;
+  subject: string;
   date: string;
   status: 'present' | 'absent' | 'late';
-  subject: string;
   teacher: string;
-  remarks?: string;
 }
 
 const AttendanceManagement: React.FC = () => {
+  const [selectedClass, setSelectedClass] = useState('all');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Mock attendance data
   const [attendanceRecords] = useState<AttendanceRecord[]>([
     {
       id: '1',
       studentName: 'আহমেদ করিম',
-      class: 'Class 6-A',
+      className: 'Class 6-A',
+      subject: 'Mathematics',
       date: '2024-06-24',
       status: 'present',
-      subject: 'Mathematics',
       teacher: 'রহিম আহমেদ'
     },
     {
       id: '2',
       studentName: 'ফাতিমা খাতুন',
-      class: 'Class 7-B',
+      className: 'Class 6-A',
+      subject: 'Mathematics',
       date: '2024-06-24',
       status: 'absent',
-      subject: 'English',
-      teacher: 'সালমা খাতুন',
-      remarks: 'Sick'
+      teacher: 'রহিম আহমেদ'
     },
     {
       id: '3',
       studentName: 'রহিম উদ্দিন',
-      class: 'Class 8-A',
+      className: 'Class 6-B',
+      subject: 'English',
       date: '2024-06-24',
       status: 'late',
+      teacher: 'সালমা খাতুন'
+    },
+    {
+      id: '4',
+      studentName: 'সালমা বেগম',
+      className: 'Class 7-A',
       subject: 'Science',
-      teacher: 'করিম উদ্দিন',
-      remarks: 'Traffic'
+      date: '2024-06-24',
+      status: 'present',
+      teacher: 'করিম উদ্দিন'
     }
   ]);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClass, setSelectedClass] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const classes = ['all', 'Class 6-A', 'Class 6-B', 'Class 7-A', 'Class 7-B'];
 
-  const classes = ['Class 6-A', 'Class 6-B', 'Class 7-A', 'Class 7-B', 'Class 8-A', 'Class 8-B'];
-  const statuses = ['present', 'absent', 'late'];
-
+  // Filter records based on selected filters
   const filteredRecords = attendanceRecords.filter(record => {
-    const matchesSearch = record.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.class.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClass === 'all' || record.class === selectedClass;
-    const matchesStatus = selectedStatus === 'all' || record.status === selectedStatus;
+    const matchesClass = selectedClass === 'all' || record.className === selectedClass;
     const matchesDate = record.date === selectedDate;
-    return matchesSearch && matchesClass && matchesStatus && matchesDate;
+    const matchesSearch = record.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         record.teacher.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchesClass && matchesDate && matchesSearch;
   });
 
-  // Statistics
-  const todayStats = {
-    totalRecords: filteredRecords.length,
-    present: filteredRecords.filter(r => r.status === 'present').length,
-    absent: filteredRecords.filter(r => r.status === 'absent').length,
-    late: filteredRecords.filter(r => r.status === 'late').length
-  };
-
-  const attendanceRate = todayStats.totalRecords > 0 
-    ? ((todayStats.present + todayStats.late) / todayStats.totalRecords * 100).toFixed(1)
-    : '0';
+  // Calculate statistics
+  const totalRecords = filteredRecords.length;
+  const presentCount = filteredRecords.filter(r => r.status === 'present').length;
+  const absentCount = filteredRecords.filter(r => r.status === 'absent').length;
+  const lateCount = filteredRecords.filter(r => r.status === 'late').length;
 
   // Chart data
-  const chartData = classes.map(className => {
-    const classRecords = filteredRecords.filter(r => r.class === className);
-    return {
-      class: className,
-      present: classRecords.filter(r => r.status === 'present').length,
-      absent: classRecords.filter(r => r.status === 'absent').length,
-      late: classRecords.filter(r => r.status === 'late').length
-    };
-  });
+  const chartData = [
+    { name: 'Present', value: presentCount, color: '#10B981' },
+    { name: 'Absent', value: absentCount, color: '#EF4444' },
+    { name: 'Late', value: lateCount, color: '#F59E0B' }
+  ];
 
-  const getStatusIcon = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'present':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'absent':
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'late':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      default:
-        return null;
+      case 'present': return 'bg-green-100 text-green-800';
+      case 'absent': return 'bg-red-100 text-red-800';
+      case 'late': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      present: 'default',
-      absent: 'destructive',
-      late: 'secondary'
-    } as const;
-    
-    return <Badge variant={variants[status as keyof typeof variants]}>{status}</Badge>;
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'present': return <CheckCircle className="h-4 w-4" />;
+      case 'absent': return <XCircle className="h-4 w-4" />;
+      case 'late': return <Clock className="h-4 w-4" />;
+      default: return null;
+    }
+  };
+
+  const exportData = () => {
+    // In a real app, this would generate and download a CSV/PDF
+    console.log('Exporting attendance data:', filteredRecords);
+    alert('Export functionality would be implemented here');
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Attendance Management / উপস্থিতি ব্যবস্থাপনা</h2>
-        <div className="flex space-x-4">
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
-          </Button>
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-              <div>
-                <p className="text-sm text-gray-600">Present</p>
-                <p className="text-2xl font-bold text-green-600">{todayStats.present}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <XCircle className="h-8 w-8 text-red-600" />
-              <div>
-                <p className="text-sm text-gray-600">Absent</p>
-                <p className="text-2xl font-bold text-red-600">{todayStats.absent}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-8 w-8 text-yellow-600" />
-              <div>
-                <p className="text-sm text-gray-600">Late</p>
-                <p className="text-2xl font-bold text-yellow-600">{todayStats.late}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-gray-600">Total</p>
-                <p className="text-2xl font-bold text-blue-600">{todayStats.totalRecords}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="h-8 w-8 text-purple-600" />
-              <div>
-                <p className="text-sm text-gray-600">Rate</p>
-                <p className="text-2xl font-bold text-purple-600">{attendanceRate}%</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <Button onClick={exportData}>
+          <Download className="mr-2 h-4 w-4" />
+          Export Report
+        </Button>
       </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Search / অনুসন্ধান</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search student or teacher..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Class / ক্লাস</label>
+              <Select value={selectedClass} onValueChange={setSelectedClass}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls} value={cls}>
+                      {cls === 'all' ? 'All Classes' : cls}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Date / তারিখ</label>
               <Input
-                placeholder="Search students..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
               />
             </div>
 
-            <Input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-
-            <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Classes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Classes</SelectItem>
-                {classes.map((cls) => (
-                  <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {statuses.map((status) => (
-                  <SelectItem key={status} value={status}>{status}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button>
-              <Filter className="mr-2 h-4 w-4" />
-              Apply Filters
-            </Button>
+            <div>
+              <label className="block text-sm font-medium mb-2">Actions</label>
+              <Button variant="outline" className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                Advanced Filter
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Attendance Chart */}
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Records</p>
+                <p className="text-2xl font-bold">{totalRecords}</p>
+              </div>
+              <Calendar className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Present</p>
+                <p className="text-2xl font-bold text-green-600">{presentCount}</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Absent</p>
+                <p className="text-2xl font-bold text-red-600">{absentCount}</p>
+              </div>
+              <XCircle className="h-8 w-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Late</p>
+                <p className="text-2xl font-bold text-yellow-600">{lateCount}</p>
+              </div>
+              <Clock className="h-8 w-8 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Class-wise Attendance / ক্লাসভিত্তিক উপস্থিতি</CardTitle>
+          <CardTitle>Attendance Overview / উপস্থিতির সংক্ষিপ্ত বিবরণ</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="class" />
+              <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="present" fill="#10B981" name="Present" />
-              <Bar dataKey="absent" fill="#EF4444" name="Absent" />
-              <Bar dataKey="late" fill="#F59E0B" name="Late" />
+              <Bar dataKey="value" fill="#3B82F6" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -266,9 +248,7 @@ const AttendanceManagement: React.FC = () => {
       {/* Attendance Records Table */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Attendance Records / উপস্থিতির রেকর্ড ({filteredRecords.length} records)
-          </CardTitle>
+          <CardTitle>Attendance Records / উপস্থিতির রেকর্ড</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -280,24 +260,22 @@ const AttendanceManagement: React.FC = () => {
                 <TableHead>Teacher / শিক্ষক</TableHead>
                 <TableHead>Date / তারিখ</TableHead>
                 <TableHead>Status / অবস্থা</TableHead>
-                <TableHead>Remarks / মন্তব্য</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredRecords.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell className="font-medium">{record.studentName}</TableCell>
-                  <TableCell>{record.class}</TableCell>
+                  <TableCell>{record.className}</TableCell>
                   <TableCell>{record.subject}</TableCell>
                   <TableCell>{record.teacher}</TableCell>
                   <TableCell>{record.date}</TableCell>
                   <TableCell>
-                    <div className="flex items-center space-x-2">
+                    <Badge className={getStatusColor(record.status)}>
                       {getStatusIcon(record.status)}
-                      {getStatusBadge(record.status)}
-                    </div>
+                      <span className="ml-1 capitalize">{record.status}</span>
+                    </Badge>
                   </TableCell>
-                  <TableCell>{record.remarks || '-'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
