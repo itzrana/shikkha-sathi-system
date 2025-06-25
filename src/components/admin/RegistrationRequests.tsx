@@ -38,7 +38,22 @@ const RegistrationRequests: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setRequests(data || []);
+      
+      // Filter out admin roles and cast to our interface
+      const filteredData = (data || [])
+        .filter(request => request.role !== 'admin')
+        .map(request => ({
+          id: request.id,
+          name: request.name,
+          email: request.email,
+          class: request.class,
+          subject: request.subject,
+          role: request.role as 'student' | 'teacher',
+          status: request.status as 'pending' | 'approved' | 'rejected',
+          created_at: request.created_at
+        }));
+      
+      setRequests(filteredData);
     } catch (error) {
       console.error('Error fetching requests:', error);
       toast({
