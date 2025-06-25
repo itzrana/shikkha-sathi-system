@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from './Navbar';
@@ -6,6 +5,7 @@ import Sidebar from './Sidebar';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import AttendanceSheet from '@/components/teacher/AttendanceSheet';
 import AttendanceReport from '@/components/student/AttendanceReport';
+import AttendanceSummary from '@/components/student/AttendanceSummary';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import StudentManagement from '@/components/admin/StudentManagement';
 import TeacherManagement from '@/components/admin/TeacherManagement';
@@ -43,7 +43,7 @@ const Layout: React.FC = () => {
         return <AttendanceReport />;
       
       case 'attendance-summary':
-        return <AttendanceReport />;
+        return <AttendanceSummary />;
       
       case 'students':
         return <StudentManagement />;
