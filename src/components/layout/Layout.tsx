@@ -11,6 +11,7 @@ import StudentManagement from '@/components/admin/StudentManagement';
 import TeacherManagement from '@/components/admin/TeacherManagement';
 import ClassManagement from '@/components/admin/ClassManagement';
 import AttendanceManagement from '@/components/admin/AttendanceManagement';
+import RegistrationRequests from '@/components/admin/RegistrationRequests';
 
 const Layout: React.FC = () => {
   const { user } = useAuth();
@@ -35,6 +36,9 @@ const Layout: React.FC = () => {
             <DashboardStats />
           </div>
         );
+      
+      case 'registration-requests':
+        return <RegistrationRequests />;
       
       case 'mark-attendance':
         return <AttendanceSheet />;
