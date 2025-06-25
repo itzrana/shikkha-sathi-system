@@ -66,22 +66,30 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
   const menuItems = getMenuItems();
 
   return (
-    <div className="w-64 bg-white shadow-sm border-r min-h-screen">
-      <div className="p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Menu / মেনু</h2>
+    <div className="w-64 bg-gradient-to-b from-gray-50 to-white shadow-xl border-r border-gray-200/50 min-h-screen">
+      <div className="p-6">
+        <div className="mb-8">
+          <h2 className="text-lg font-bold text-gray-800 mb-2">Menu / মেনু</h2>
+          <div className="h-1 w-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"></div>
+        </div>
         <nav className="space-y-2">
           {menuItems.map((item) => (
             <Button
               key={item.id}
               variant={activeTab === item.id ? 'default' : 'ghost'}
               className={cn(
-                'w-full justify-start text-left',
-                activeTab === item.id && 'bg-blue-600 text-white'
+                'w-full justify-start text-left h-12 font-medium transition-all duration-300 group',
+                activeTab === item.id 
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30' 
+                  : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:shadow-sm'
               )}
               onClick={() => onTabChange(item.id)}
             >
-              <item.icon className="mr-3 h-4 w-4" />
-              {item.label}
+              <item.icon className={cn(
+                "mr-3 h-5 w-5 transition-transform duration-300 group-hover:scale-110",
+                activeTab === item.id ? "text-white" : "text-gray-600 group-hover:text-blue-600"
+              )} />
+              <span className="truncate">{item.label}</span>
             </Button>
           ))}
         </nav>

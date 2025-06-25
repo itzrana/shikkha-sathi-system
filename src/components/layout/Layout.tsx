@@ -23,10 +23,15 @@ const Layout: React.FC = () => {
           return <AdminDashboard />;
         }
         return (
-          <div>
-            <h2 className="text-2xl font-bold mb-6">
-              Welcome, {user?.name} / স্বাগতম, {user?.name}
-            </h2>
+          <div className="space-y-8">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl">
+              <h2 className="text-3xl font-bold mb-2">
+                Welcome, {user?.name} / স্বাগতম, {user?.name}
+              </h2>
+              <p className="text-blue-100 text-lg">
+                Have a great day managing your attendance!
+              </p>
+            </div>
             <DashboardStats />
           </div>
         );
@@ -54,50 +59,55 @@ const Layout: React.FC = () => {
       
       case 'my-classes':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">My Classes / আমার ক্লাস</h2>
-            <p className="text-gray-600">Your class information will be displayed here.</p>
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <h2 className="text-3xl font-bold mb-6 text-gray-800">My Classes / আমার ক্লাস</h2>
+            <p className="text-gray-600 text-lg">Your class information will be displayed here.</p>
           </div>
         );
       
       case 'reports':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Reports / রিপোর্ট</h2>
-            <p className="text-gray-600">Detailed reports and analytics will be available here.</p>
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <h2 className="text-3xl font-bold mb-6 text-gray-800">Reports / রিপোর্ট</h2>
+            <p className="text-gray-600 text-lg">Detailed reports and analytics will be available here.</p>
           </div>
         );
       
       case 'attendance-reports':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Attendance Reports</h2>
-            <p className="text-gray-600">Teacher attendance reports will be displayed here.</p>
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <h2 className="text-3xl font-bold mb-6 text-gray-800">Attendance Reports</h2>
+            <p className="text-gray-600 text-lg">Teacher attendance reports will be displayed here.</p>
           </div>
         );
       
       case 'notifications':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Notifications / বিজ্ঞপ্তি</h2>
-            <p className="text-gray-600">Notification management features will be implemented here.</p>
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <h2 className="text-3xl font-bold mb-6 text-gray-800">Notifications / বিজ্ঞপ্তি</h2>
+            <p className="text-gray-600 text-lg">Notification management features will be implemented here.</p>
           </div>
         );
       
       case 'settings':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Settings / সেটিংস</h2>
-            <p className="text-gray-600">System settings and configuration options will be available here.</p>
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <h2 className="text-3xl font-bold mb-6 text-gray-800">Settings / সেটিংস</h2>
+            <p className="text-gray-600 text-lg">System settings and configuration options will be available here.</p>
           </div>
         );
       
       default:
         return (
-          <div>
-            <h2 className="text-2xl font-bold mb-6">
-              Welcome, {user?.name} / স্বাগতম, {user?.name}
-            </h2>
+          <div className="space-y-8">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl">
+              <h2 className="text-3xl font-bold mb-2">
+                Welcome, {user?.name} / স্বাগতম, {user?.name}
+              </h2>
+              <p className="text-blue-100 text-lg">
+                Have a great day managing your attendance!
+              </p>
+            </div>
             <DashboardStats />
           </div>
         );
@@ -105,11 +115,11 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Navbar />
       <div className="flex">
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-8">
           {renderContent()}
         </main>
       </div>
