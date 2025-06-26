@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,7 +46,7 @@ const NotificationManagement: React.FC = () => {
         .from('notifications')
         .select(`
           *,
-          recipient:recipient_id(name, email, role)
+          recipient:profiles!notifications_recipient_id_fkey(name, email, role)
         `)
         .order('created_at', { ascending: false });
 
