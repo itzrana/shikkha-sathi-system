@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,46 +11,21 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Trash2, Users, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Teacher {
   id: string;
   name: string;
   email: string;
-  phone: string;
   subject: string;
-  qualification: string;
-  experience: string;
-  address: string;
-  status: 'active' | 'inactive';
+  created_at?: string;
 }
 
 const TeacherManagement: React.FC = () => {
   const { toast } = useToast();
-  const [teachers, setTeachers] = useState<Teacher[]>([
-    {
-      id: '1',
-      name: 'রহিম আহমেদ',
-      email: 'rahim.ahmed@school.com',
-      phone: '01712345678',
-      subject: 'Mathematics',
-      qualification: 'M.Sc in Mathematics',
-      experience: '8 years',
-      address: 'ঢাকা, বাংলাদেশ',
-      status: 'active'
-    },
-    {
-      id: '2',
-      name: 'সালমা খাতুন',
-      email: 'salma.khatun@school.com',
-      phone: '01723456789',
-      subject: 'English',
-      qualification: 'M.A in English',
-      experience: '5 years',
-      address: 'চট্টগ্রাম, বাংলাদেশ',
-      status: 'active'
-    }
-  ]);
-
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isAddingTeacher, setIsAddingTeacher] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
 
@@ -58,51 +33,120 @@ const TeacherManagement: React.FC = () => {
     defaultValues: {
       name: '',
       email: '',
-      phone: '',
-      subject: '',
-      qualification: '',
-      experience: '',
-      address: ''
+      subject: ''
     }
   });
 
-  const subjects = ['Mathematics', 'English', 'Bangla', 'Science', 'Social Studies', 'ICT', 'Physical Education'];
+  useEffect(() => {
+    fetchTeachers();
+    fetchSubjects();
+  }, []);
 
-  const onSubmit = (data: any) => {
-    if (editingTeacher) {
-      setTeachers(teachers.map(t => 
-        t.id === editingTeacher.id 
-          ? { ...editingTeacher, ...data }
-          : t
-      ));
-      setEditingTeacher(null);
+  const fetchTeachers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'teacher')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTeachers(data || []);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
       toast({
-        title: "Success",
-        description: "Teacher updated successfully",
-      });
-    } else {
-      const newTeacher: Teacher = {
-        id: (teachers.length + 1).toString(),
-        ...data,
-        status: 'active' as const
-      };
-      setTeachers([...teachers, newTeacher]);
-      toast({
-        title: "Success",
-        description: "Teacher added successfully",
+        title: "Error",
+        description: "Failed to fetch teachers",
+        variant: "destructive",
       });
     }
-    
-    form.reset();
-    setIsAddingTeacher(false);
   };
 
-  const deleteTeacher = (id: string) => {
-    setTeachers(teachers.filter(t => t.id !== id));
-    toast({
-      title: "Success",
-      description: "Teacher deleted successfully",
-    });
+  const fetchSubjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('name')
+        .order('name');
+
+      if (error) throw error;
+      setSubjects(data?.map(s => s.name) || []);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+    }
+  };
+
+  const onSubmit = async (data: any) => {
+    setLoading(true);
+    try {
+      if (editingTeacher) {
+        const { error } = await supabase
+          .from('profiles')
+          .update(data)
+          .eq('id', editingTeacher.id);
+
+        if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Teacher updated successfully",
+        });
+      } else {
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            ...data,
+            role: 'teacher',
+            id: crypto.randomUUID()
+          });
+
+        if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Teacher added successfully",
+        });
+      }
+      
+      form.reset();
+      setIsAddingTeacher(false);
+      setEditingTeacher(null);
+      fetchTeachers();
+    } catch (error) {
+      console.error('Error saving teacher:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save teacher",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteTeacher = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Teacher deleted successfully",
+      });
+      
+      fetchTeachers();
+    } catch (error) {
+      console.error('Error deleting teacher:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete teacher",
+        variant: "destructive",
+      });
+    }
   };
 
   const startEdit = (teacher: Teacher) => {
@@ -163,20 +207,6 @@ const TeacherManagement: React.FC = () => {
 
                 <FormField
                   control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone / ফোন</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="01712345678" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="subject"
                   render={({ field }) => (
                     <FormItem>
@@ -198,50 +228,8 @@ const TeacherManagement: React.FC = () => {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="qualification"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Qualification / যোগ্যতা</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="M.Sc in Mathematics" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="experience"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Experience / অভিজ্ঞতা</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="5 years" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address / ঠিকানা</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="ঢাকা, বাংলাদেশ" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full">
-                  {editingTeacher ? 'Update Teacher' : 'Add Teacher'}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Saving...' : (editingTeacher ? 'Update Teacher' : 'Add Teacher')}
                 </Button>
               </form>
             </Form>
@@ -268,9 +256,7 @@ const TeacherManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Teachers</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {teachers.filter(t => t.status === 'active').length}
-                </p>
+                <p className="text-2xl font-bold text-green-600">{teachers.length}</p>
               </div>
               <BookOpen className="h-8 w-8 text-green-600" />
             </div>
@@ -288,11 +274,8 @@ const TeacherManagement: React.FC = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name / নাম</TableHead>
+                <TableHead>Email / ইমেইল</TableHead>
                 <TableHead>Subject / বিষয়</TableHead>
-                <TableHead>Qualification / যোগ্যতা</TableHead>
-                <TableHead>Experience / অভিজ্ঞতা</TableHead>
-                <TableHead>Phone / ফোন</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -300,15 +283,8 @@ const TeacherManagement: React.FC = () => {
               {teachers.map((teacher) => (
                 <TableRow key={teacher.id}>
                   <TableCell className="font-medium">{teacher.name}</TableCell>
+                  <TableCell>{teacher.email}</TableCell>
                   <TableCell>{teacher.subject}</TableCell>
-                  <TableCell>{teacher.qualification}</TableCell>
-                  <TableCell>{teacher.experience}</TableCell>
-                  <TableCell>{teacher.phone}</TableCell>
-                  <TableCell>
-                    <Badge variant={teacher.status === 'active' ? 'default' : 'secondary'}>
-                      {teacher.status}
-                    </Badge>
-                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm" onClick={() => startEdit(teacher)}>

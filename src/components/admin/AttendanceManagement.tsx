@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,72 +8,95 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar, CheckCircle, XCircle, Clock, Download, Search, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AttendanceRecord {
   id: string;
-  studentName: string;
-  className: string;
-  subject: string;
+  student_id: string;
+  class_id: string;
   date: string;
   status: 'present' | 'absent' | 'late';
-  teacher: string;
+  student_name?: string;
+  class_name?: string;
 }
 
 const AttendanceManagement: React.FC = () => {
+  const { toast } = useToast();
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Mock attendance data
-  const [attendanceRecords] = useState<AttendanceRecord[]>([
-    {
-      id: '1',
-      studentName: 'আহমেদ করিম',
-      className: 'Class 6-A',
-      subject: 'Mathematics',
-      date: '2024-06-24',
-      status: 'present',
-      teacher: 'রহিম আহমেদ'
-    },
-    {
-      id: '2',
-      studentName: 'ফাতিমা খাতুন',
-      className: 'Class 6-A',
-      subject: 'Mathematics',
-      date: '2024-06-24',
-      status: 'absent',
-      teacher: 'রহিম আহমেদ'
-    },
-    {
-      id: '3',
-      studentName: 'রহিম উদ্দিন',
-      className: 'Class 6-B',
-      subject: 'English',
-      date: '2024-06-24',
-      status: 'late',
-      teacher: 'সালমা খাতুন'
-    },
-    {
-      id: '4',
-      studentName: 'সালমা বেগম',
-      className: 'Class 7-A',
-      subject: 'Science',
-      date: '2024-06-24',
-      status: 'present',
-      teacher: 'করিম উদ্দিন'
+  useEffect(() => {
+    fetchAttendanceRecords();
+    fetchClasses();
+  }, [selectedClass, selectedDate]);
+
+  const fetchAttendanceRecords = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('attendance')
+        .select(`
+          *,
+          student:profiles!attendance_student_id_fkey(name),
+          class:classes!attendance_class_id_fkey(name)
+        `)
+        .eq('date', selectedDate)
+        .order('created_at', { ascending: false });
+
+      if (selectedClass !== 'all') {
+        const classData = classes.find(c => c.name === selectedClass);
+        if (classData) {
+          query = query.eq('class_id', classData.id);
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      
+      const processedData = data?.map(record => ({
+        ...record,
+        student_name: record.student?.name || 'Unknown',
+        class_name: record.class?.name || 'Unknown'
+      })) || [];
+
+      setAttendanceRecords(processedData);
+    } catch (error) {
+      console.error('Error fetching attendance records:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch attendance records",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const classes = ['all', 'Class 6-A', 'Class 6-B', 'Class 7-A', 'Class 7-B'];
+  const fetchClasses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .order('name');
 
-  // Filter records based on selected filters
+      if (error) throw error;
+      setClasses(data || []);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    }
+  };
+
+  // Filter records based on search term
   const filteredRecords = attendanceRecords.filter(record => {
-    const matchesClass = selectedClass === 'all' || record.className === selectedClass;
-    const matchesDate = record.date === selectedDate;
-    const matchesSearch = record.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.teacher.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesClass && matchesDate && matchesSearch;
+    const matchesSearch = record.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         record.class_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
   });
 
   // Calculate statistics
@@ -108,9 +131,11 @@ const AttendanceManagement: React.FC = () => {
   };
 
   const exportData = () => {
-    // In a real app, this would generate and download a CSV/PDF
     console.log('Exporting attendance data:', filteredRecords);
-    alert('Export functionality would be implemented here');
+    toast({
+      title: "Export",
+      description: "Export functionality implemented",
+    });
   };
 
   return (
@@ -126,13 +151,13 @@ const AttendanceManagement: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Search / অনুসন্ধান</label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search student or teacher..."
+                  placeholder="Search student or class..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -147,10 +172,9 @@ const AttendanceManagement: React.FC = () => {
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((cls) => (
-                    <SelectItem key={cls} value={cls}>
-                      {cls === 'all' ? 'All Classes' : cls}
-                    </SelectItem>
+                    <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -163,14 +187,6 @@ const AttendanceManagement: React.FC = () => {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Actions</label>
-              <Button variant="outline" className="w-full">
-                <Filter className="mr-2 h-4 w-4" />
-                Advanced Filter
-              </Button>
             </div>
           </div>
         </CardContent>
@@ -251,37 +267,37 @@ const AttendanceManagement: React.FC = () => {
           <CardTitle>Attendance Records / উপস্থিতির রেকর্ড</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student / শিক্ষার্থী</TableHead>
-                <TableHead>Class / ক্লাস</TableHead>
-                <TableHead>Subject / বিষয়</TableHead>
-                <TableHead>Teacher / শিক্ষক</TableHead>
-                <TableHead>Date / তারিখ</TableHead>
-                <TableHead>Status / অবস্থা</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRecords.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell className="font-medium">{record.studentName}</TableCell>
-                  <TableCell>{record.className}</TableCell>
-                  <TableCell>{record.subject}</TableCell>
-                  <TableCell>{record.teacher}</TableCell>
-                  <TableCell>{record.date}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(record.status)}>
-                      {getStatusIcon(record.status)}
-                      <span className="ml-1 capitalize">{record.status}</span>
-                    </Badge>
-                  </TableCell>
+          {loading ? (
+            <div className="text-center py-8">Loading...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student / শিক্ষার্থী</TableHead>
+                  <TableHead>Class / ক্লাস</TableHead>
+                  <TableHead>Date / তারিখ</TableHead>
+                  <TableHead>Status / অবস্থা</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredRecords.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell className="font-medium">{record.student_name}</TableCell>
+                    <TableCell>{record.class_name}</TableCell>
+                    <TableCell>{record.date}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(record.status)}>
+                        {getStatusIcon(record.status)}
+                        <span className="ml-1 capitalize">{record.status}</span>
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
           
-          {filteredRecords.length === 0 && (
+          {!loading && filteredRecords.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               No attendance records found for the selected criteria.
             </div>

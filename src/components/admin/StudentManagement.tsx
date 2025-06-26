@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,49 +11,21 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Trash2, Users, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Student {
   id: string;
   name: string;
   email: string;
-  roll: string;
   class: string;
-  phone: string;
-  guardianName: string;
-  guardianPhone: string;
-  address: string;
-  status: 'active' | 'inactive';
+  created_at?: string;
 }
 
 const StudentManagement: React.FC = () => {
   const { toast } = useToast();
-  const [students, setStudents] = useState<Student[]>([
-    {
-      id: '1',
-      name: 'আহমেদ করিম',
-      email: 'ahmed.karim@student.com',
-      roll: '01',
-      class: 'Class 6-A',
-      phone: '01712345678',
-      guardianName: 'করিম উদ্দিন',
-      guardianPhone: '01798765432',
-      address: 'ঢাকা, বাংলাদেশ',
-      status: 'active'
-    },
-    {
-      id: '2',
-      name: 'ফাতিমা খাতুন',
-      email: 'fatima.khatun@student.com',
-      roll: '02',
-      class: 'Class 6-A',
-      phone: '01723456789',
-      guardianName: 'আব্দুল খালেক',
-      guardianPhone: '01787654321',
-      address: 'চট্টগ্রাম, বাংলাদেশ',
-      status: 'active'
-    }
-  ]);
-
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
@@ -61,52 +33,120 @@ const StudentManagement: React.FC = () => {
     defaultValues: {
       name: '',
       email: '',
-      roll: '',
-      class: '',
-      phone: '',
-      guardianName: '',
-      guardianPhone: '',
-      address: ''
+      class: ''
     }
   });
 
-  const classes = ['Class 6-A', 'Class 6-B', 'Class 7-A', 'Class 7-B', 'Class 8-A'];
+  useEffect(() => {
+    fetchStudents();
+    fetchClasses();
+  }, []);
 
-  const onSubmit = (data: any) => {
-    if (editingStudent) {
-      setStudents(students.map(s => 
-        s.id === editingStudent.id 
-          ? { ...editingStudent, ...data }
-          : s
-      ));
-      setEditingStudent(null);
+  const fetchStudents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'student')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setStudents(data || []);
+    } catch (error) {
+      console.error('Error fetching students:', error);
       toast({
-        title: "Success",
-        description: "Student updated successfully",
-      });
-    } else {
-      const newStudent: Student = {
-        id: (students.length + 1).toString(),
-        ...data,
-        status: 'active' as const
-      };
-      setStudents([...students, newStudent]);
-      toast({
-        title: "Success",
-        description: "Student added successfully",
+        title: "Error",
+        description: "Failed to fetch students",
+        variant: "destructive",
       });
     }
-    
-    form.reset();
-    setIsAddingStudent(false);
   };
 
-  const deleteStudent = (id: string) => {
-    setStudents(students.filter(s => s.id !== id));
-    toast({
-      title: "Success",
-      description: "Student deleted successfully",
-    });
+  const fetchClasses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('name')
+        .order('name');
+
+      if (error) throw error;
+      setClasses(data?.map(c => c.name) || []);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    }
+  };
+
+  const onSubmit = async (data: any) => {
+    setLoading(true);
+    try {
+      if (editingStudent) {
+        const { error } = await supabase
+          .from('profiles')
+          .update(data)
+          .eq('id', editingStudent.id);
+
+        if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Student updated successfully",
+        });
+      } else {
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            ...data,
+            role: 'student',
+            id: crypto.randomUUID()
+          });
+
+        if (error) throw error;
+        
+        toast({
+          title: "Success",
+          description: "Student added successfully",
+        });
+      }
+      
+      form.reset();
+      setIsAddingStudent(false);
+      setEditingStudent(null);
+      fetchStudents();
+    } catch (error) {
+      console.error('Error saving student:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save student",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteStudent = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Student deleted successfully",
+      });
+      
+      fetchStudents();
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete student",
+        variant: "destructive",
+      });
+    }
   };
 
   const startEdit = (student: Student) => {
@@ -165,103 +205,31 @@ const StudentManagement: React.FC = () => {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="roll"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Roll Number / রোল নম্বর</FormLabel>
+                <FormField
+                  control={form.control}
+                  name="class"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Class / ক্লাস</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <Input {...field} placeholder="01" required />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select class" />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="class"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Class / ক্লাস</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select class" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {classes.map((cls) => (
-                              <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone / ফোন</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="01712345678" />
-                      </FormControl>
+                        <SelectContent>
+                          {classes.map((cls) => (
+                            <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="guardianName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Guardian Name / অভিভাবকের নাম</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="করিম উদ্দিন" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="guardianPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Guardian Phone / অভিভাবকের ফোন</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="01798765432" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address / ঠিকানা</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="ঢাকা, বাংলাদেশ" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full">
-                  {editingStudent ? 'Update Student' : 'Add Student'}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Saving...' : (editingStudent ? 'Update Student' : 'Add Student')}
                 </Button>
               </form>
             </Form>
@@ -288,9 +256,7 @@ const StudentManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Students</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {students.filter(s => s.status === 'active').length}
-                </p>
+                <p className="text-2xl font-bold text-green-600">{students.length}</p>
               </div>
               <GraduationCap className="h-8 w-8 text-green-600" />
             </div>
@@ -308,11 +274,8 @@ const StudentManagement: React.FC = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name / নাম</TableHead>
-                <TableHead>Roll / রোল</TableHead>
+                <TableHead>Email / ইমেইল</TableHead>
                 <TableHead>Class / ক্লাস</TableHead>
-                <TableHead>Guardian / অভিভাবক</TableHead>
-                <TableHead>Phone / ফোন</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -320,15 +283,8 @@ const StudentManagement: React.FC = () => {
               {students.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{student.name}</TableCell>
-                  <TableCell>{student.roll}</TableCell>
+                  <TableCell>{student.email}</TableCell>
                   <TableCell>{student.class}</TableCell>
-                  <TableCell>{student.guardianName}</TableCell>
-                  <TableCell>{student.guardianPhone}</TableCell>
-                  <TableCell>
-                    <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
-                      {student.status}
-                    </Badge>
-                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm" onClick={() => startEdit(student)}>
