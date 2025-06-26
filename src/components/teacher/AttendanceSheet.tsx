@@ -74,7 +74,7 @@ const AttendanceSheet: React.FC = () => {
         return {
           id: student.id,
           name: student.name,
-          status: attendance?.status || null
+          status: attendance?.status as 'present' | 'absent' | 'late' | null || null
         };
       }) || [];
 

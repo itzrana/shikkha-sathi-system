@@ -62,7 +62,8 @@ const AttendanceManagement: React.FC = () => {
       const processedData = data?.map(record => ({
         ...record,
         student_name: record.student?.name || 'Unknown',
-        class_name: record.class?.name || 'Unknown'
+        class_name: record.class?.name || 'Unknown',
+        status: record.status as 'present' | 'absent' | 'late'
       })) || [];
 
       setAttendanceRecords(processedData);
