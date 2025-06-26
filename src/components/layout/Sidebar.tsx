@@ -12,7 +12,8 @@ import {
   BookOpen, 
   UserCheck,
   FileText,
-  Bell
+  Bell,
+  UserPlus
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
       case 'admin':
         return [
           ...commonItems,
+          { id: 'registration-requests', label: 'Registration Requests / নিবন্ধন আবেদন', icon: UserPlus },
           { id: 'students', label: 'Students / শিক্ষার্থী', icon: Users },
           { id: 'teachers', label: 'Teachers / শিক্ষক', icon: UserCheck },
           { id: 'classes', label: 'Classes / ক্লাস', icon: BookOpen },

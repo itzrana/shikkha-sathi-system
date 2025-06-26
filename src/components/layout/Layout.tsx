@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from './Navbar';
@@ -12,6 +13,9 @@ import TeacherManagement from '@/components/admin/TeacherManagement';
 import ClassManagement from '@/components/admin/ClassManagement';
 import AttendanceManagement from '@/components/admin/AttendanceManagement';
 import RegistrationRequests from '@/components/admin/RegistrationRequests';
+import NotificationManagement from '@/components/admin/NotificationManagement';
+import ReportsPage from '@/components/admin/ReportsPage';
+import SettingsPage from '@/components/admin/SettingsPage';
 
 const Layout: React.FC = () => {
   const { user } = useAuth();
@@ -61,6 +65,15 @@ const Layout: React.FC = () => {
       case 'attendance':
         return <AttendanceManagement />;
       
+      case 'notifications':
+        return <NotificationManagement />;
+      
+      case 'reports':
+        return <ReportsPage />;
+      
+      case 'settings':
+        return <SettingsPage />;
+      
       case 'my-classes':
         return (
           <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -69,35 +82,11 @@ const Layout: React.FC = () => {
           </div>
         );
       
-      case 'reports':
-        return (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Reports / রিপোর্ট</h2>
-            <p className="text-gray-600 text-lg">Detailed reports and analytics will be available here.</p>
-          </div>
-        );
-      
       case 'attendance-reports':
         return (
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <h2 className="text-3xl font-bold mb-6 text-gray-800">Attendance Reports</h2>
             <p className="text-gray-600 text-lg">Teacher attendance reports will be displayed here.</p>
-          </div>
-        );
-      
-      case 'notifications':
-        return (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Notifications / বিজ্ঞপ্তি</h2>
-            <p className="text-gray-600 text-lg">Notification management features will be implemented here.</p>
-          </div>
-        );
-      
-      case 'settings':
-        return (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Settings / সেটিংস</h2>
-            <p className="text-gray-600 text-lg">System settings and configuration options will be available here.</p>
           </div>
         );
       

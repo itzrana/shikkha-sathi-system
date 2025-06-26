@@ -9,6 +9,111 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          class_id: string | null
+          created_at: string | null
+          date: string
+          id: string
+          status: string
+          student_id: string | null
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string | null
+          date: string
+          id?: string
+          status: string
+          student_id?: string | null
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          status?: string
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          read: boolean | null
+          recipient_id: string | null
+          sender_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          read?: boolean | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_requests: {
         Row: {
           approved_at: string | null
@@ -54,33 +159,57 @@ export type Database = {
       profiles: {
         Row: {
           class: string | null
+          class_id: string | null
           created_at: string | null
           email: string
           id: string
           name: string
           role: Database["public"]["Enums"]["user_role"]
           subject: string | null
+          subject_id: string | null
           updated_at: string | null
         }
         Insert: {
           class?: string | null
+          class_id?: string | null
           created_at?: string | null
           email: string
           id: string
           name: string
           role: Database["public"]["Enums"]["user_role"]
           subject?: string | null
+          subject_id?: string | null
           updated_at?: string | null
         }
         Update: {
           class?: string | null
+          class_id?: string | null
           created_at?: string | null
           email?: string
           id?: string
           name?: string
           role?: Database["public"]["Enums"]["user_role"]
           subject?: string | null
+          subject_id?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
         }
         Relationships: []
       }
