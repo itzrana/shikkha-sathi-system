@@ -11,28 +11,28 @@ export type Database = {
     Tables: {
       attendance: {
         Row: {
-          class_id: string | null
+          class_id: string
           created_at: string | null
           date: string
           id: string
           status: string
-          student_id: string | null
+          student_id: string
         }
         Insert: {
-          class_id?: string | null
+          class_id: string
           created_at?: string | null
           date: string
           id?: string
           status: string
-          student_id?: string | null
+          student_id: string
         }
         Update: {
-          class_id?: string | null
+          class_id?: string
           created_at?: string | null
           date?: string
           id?: string
           status?: string
-          student_id?: string | null
+          student_id?: string
         }
         Relationships: [
           {
@@ -74,27 +74,27 @@ export type Database = {
           created_at: string | null
           id: string
           message: string
-          read: boolean | null
+          read: boolean
           recipient_id: string | null
-          sender_id: string | null
+          sender_id: string
           title: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           message: string
-          read?: boolean | null
+          read?: boolean
           recipient_id?: string | null
-          sender_id?: string | null
+          sender_id: string
           title: string
         }
         Update: {
           created_at?: string | null
           id?: string
           message?: string
-          read?: boolean | null
+          read?: boolean
           recipient_id?: string | null
-          sender_id?: string | null
+          sender_id?: string
           title?: string
         }
         Relationships: [
@@ -123,10 +123,9 @@ export type Database = {
           email: string
           id: string
           name: string
-          role: Database["public"]["Enums"]["user_role"]
-          status: Database["public"]["Enums"]["request_status"] | null
+          role: string
+          status: string
           subject: string | null
-          updated_at: string | null
         }
         Insert: {
           approved_at?: string | null
@@ -136,10 +135,9 @@ export type Database = {
           email: string
           id?: string
           name: string
-          role: Database["public"]["Enums"]["user_role"]
-          status?: Database["public"]["Enums"]["request_status"] | null
+          role: string
+          status?: string
           subject?: string | null
-          updated_at?: string | null
         }
         Update: {
           approved_at?: string | null
@@ -149,48 +147,49 @@ export type Database = {
           email?: string
           id?: string
           name?: string
-          role?: Database["public"]["Enums"]["user_role"]
-          status?: Database["public"]["Enums"]["request_status"] | null
+          role?: string
+          status?: string
           subject?: string | null
-          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pending_requests_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
           class: string | null
-          class_id: string | null
           created_at: string | null
           email: string
           id: string
           name: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: string
           subject: string | null
-          subject_id: string | null
           updated_at: string | null
         }
         Insert: {
           class?: string | null
-          class_id?: string | null
           created_at?: string | null
           email: string
           id: string
           name: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: string
           subject?: string | null
-          subject_id?: string | null
           updated_at?: string | null
         }
         Update: {
           class?: string | null
-          class_id?: string | null
           created_at?: string | null
           email?: string
           id?: string
           name?: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: string
           subject?: string | null
-          subject_id?: string | null
           updated_at?: string | null
         }
         Relationships: []

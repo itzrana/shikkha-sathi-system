@@ -12,8 +12,8 @@ interface PendingRequest {
   id: string;
   name: string;
   email: string;
-  class?: string;
-  subject?: string;
+  class?: string | null;
+  subject?: string | null;
   role: 'student' | 'teacher';
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
@@ -37,10 +37,13 @@ const RegistrationRequests: React.FC = () => {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Pending requests fetch error:', error);
+        throw error;
+      }
       
       // Filter out admin roles and cast to our interface
-      const filteredData = (data || [])
+      const filteredData: PendingRequest[] = (data || [])
         .filter(request => request.role !== 'admin')
         .map(request => ({
           id: request.id,
@@ -50,7 +53,7 @@ const RegistrationRequests: React.FC = () => {
           subject: request.subject,
           role: request.role as 'student' | 'teacher',
           status: request.status as 'pending' | 'approved' | 'rejected',
-          created_at: request.created_at
+          created_at: request.created_at || new Date().toISOString()
         }));
       
       setRequests(filteredData);
@@ -66,34 +69,15 @@ const RegistrationRequests: React.FC = () => {
     }
   };
 
-  const generatePassword = () => {
-    return Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-  };
-
   const approveRequest = async (request: PendingRequest) => {
     setProcessingIds(prev => new Set(prev).add(request.id));
     
     try {
-      const password = generatePassword();
-      
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: request.email,
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          name: request.name,
-          role: request.role
-        }
-      });
-
-      if (authError) throw authError;
-
-      // Insert into profiles table
+      // First, insert the user into profiles
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
-          id: authData.user.id,
+          id: crypto.randomUUID(), // Generate a new UUID for the profile
           name: request.name,
           email: request.email,
           role: request.role,
@@ -101,23 +85,28 @@ const RegistrationRequests: React.FC = () => {
           subject: request.subject
         });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
+      }
 
       // Update request status
       const { error: updateError } = await supabase
         .from('pending_requests')
         .update({
           status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: (await supabase.auth.getUser()).data.user?.id
+          approved_at: new Date().toISOString()
         })
         .eq('id', request.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Request update error:', updateError);
+        throw updateError;
+      }
 
       toast({
         title: "অনুমোদিত / Approved",
-        description: `${request.name} এর আবেদন অনুমোদিত হয়েছে। পাসওয়ার্ড: ${password}`,
+        description: `${request.name} এর আবেদন অনুমোদিত হয়েছে।`,
       });
 
       // Remove from pending list
@@ -147,7 +136,10 @@ const RegistrationRequests: React.FC = () => {
         .update({ status: 'rejected' })
         .eq('id', requestId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Request rejection error:', error);
+        throw error;
+      }
 
       toast({
         title: "প্রত্যাখ্যাত / Rejected",
@@ -212,7 +204,7 @@ const RegistrationRequests: React.FC = () => {
                       {request.role === 'student' ? 'শিক্ষার্থী' : 'শিক্ষক'}
                     </Badge>
                   </TableCell>
-                  <TableCell>{request.class || request.subject}</TableCell>
+                  <TableCell>{request.class || request.subject || 'N/A'}</TableCell>
                   <TableCell>{new Date(request.created_at).toLocaleDateString('bn-BD')}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">

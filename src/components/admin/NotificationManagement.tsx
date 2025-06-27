@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Send, Users, UserCheck, Trash2, Eye } from 'lucide-react';
+import { Bell, Send, Trash2 } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -25,9 +26,16 @@ interface Notification {
   };
 }
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 const NotificationManagement: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [recipientType, setRecipientType] = useState('all');
@@ -50,8 +58,27 @@ const NotificationManagement: React.FC = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setNotifications(data || []);
+      if (error) {
+        console.error('Notifications fetch error:', error);
+        throw error;
+      }
+      
+      const notificationsData: Notification[] = (data || []).map((notification: any) => ({
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        recipient_id: notification.recipient_id,
+        sender_id: notification.sender_id,
+        read: notification.read,
+        created_at: notification.created_at,
+        recipient: notification.recipient ? {
+          name: notification.recipient.name,
+          email: notification.recipient.email,
+          role: notification.recipient.role
+        } : undefined
+      }));
+      
+      setNotifications(notificationsData);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       toast({
@@ -69,7 +96,11 @@ const NotificationManagement: React.FC = () => {
         .select('id, name, email, role')
         .neq('role', 'admin');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Users fetch error:', error);
+        throw error;
+      }
+      
       setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -88,7 +119,8 @@ const NotificationManagement: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data: currentUser } = await supabase.auth.getUser();
+      // For demo purposes, we'll use a mock sender ID
+      const mockSenderId = crypto.randomUUID();
       
       if (recipientType === 'all') {
         // Send to all users
@@ -96,7 +128,7 @@ const NotificationManagement: React.FC = () => {
           title,
           message,
           recipient_id: user.id,
-          sender_id: currentUser.user?.id,
+          sender_id: mockSenderId,
         }));
 
         const { error } = await supabase
@@ -111,7 +143,7 @@ const NotificationManagement: React.FC = () => {
           title,
           message,
           recipient_id: user.id,
-          sender_id: currentUser.user?.id,
+          sender_id: mockSenderId,
         }));
 
         const { error } = await supabase
@@ -127,7 +159,7 @@ const NotificationManagement: React.FC = () => {
             title,
             message,
             recipient_id: selectedRecipient,
-            sender_id: currentUser.user?.id,
+            sender_id: mockSenderId,
           });
 
         if (error) throw error;
@@ -291,10 +323,10 @@ const NotificationManagement: React.FC = () => {
                 <TableRow key={notification.id}>
                   <TableCell className="font-medium">{notification.title}</TableCell>
                   <TableCell>
-                    {notification.recipient_id ? (
+                    {notification.recipient_id && notification.recipient ? (
                       <div>
-                        <div>{notification.recipient?.name}</div>
-                        <div className="text-sm text-gray-500">{notification.recipient?.email}</div>
+                        <div>{notification.recipient.name}</div>
+                        <div className="text-sm text-gray-500">{notification.recipient.email}</div>
                       </div>
                     ) : (
                       'All Users'
@@ -319,6 +351,12 @@ const NotificationManagement: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+          
+          {notifications.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No notifications sent yet. Send your first notification to get started.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -41,7 +41,11 @@ const ClassManagement: React.FC = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Classes fetch error:', error);
+        throw error;
+      }
+      
       setClasses(data || []);
     } catch (error) {
       console.error('Error fetching classes:', error);
@@ -59,7 +63,7 @@ const ClassManagement: React.FC = () => {
       if (editingClass) {
         const { error } = await supabase
           .from('classes')
-          .update(data)
+          .update({ name: data.name })
           .eq('id', editingClass.id);
 
         if (error) throw error;
@@ -71,7 +75,7 @@ const ClassManagement: React.FC = () => {
       } else {
         const { error } = await supabase
           .from('classes')
-          .insert(data);
+          .insert({ name: data.name });
 
         if (error) throw error;
         
@@ -124,7 +128,7 @@ const ClassManagement: React.FC = () => {
 
   const startEdit = (classInfo: ClassInfo) => {
     setEditingClass(classInfo);
-    form.reset(classInfo);
+    form.reset({ name: classInfo.name });
     setIsAddingClass(true);
   };
 
@@ -225,6 +229,12 @@ const ClassManagement: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+          
+          {classes.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No classes found. Add your first class to get started.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CheckCircle, XCircle, Clock, Download, Search, Filter } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Clock, Download, Search } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,10 +21,15 @@ interface AttendanceRecord {
   class_name?: string;
 }
 
+interface ClassInfo {
+  id: string;
+  name: string;
+}
+
 const AttendanceManagement: React.FC = () => {
   const { toast } = useToast();
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,13 +62,19 @@ const AttendanceManagement: React.FC = () => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
       
-      const processedData = data?.map(record => ({
-        ...record,
+      const processedData: AttendanceRecord[] = data?.map((record: any) => ({
+        id: record.id,
+        student_id: record.student_id,
+        class_id: record.class_id,
+        date: record.date,
+        status: record.status as 'present' | 'absent' | 'late',
         student_name: record.student?.name || 'Unknown',
-        class_name: record.class?.name || 'Unknown',
-        status: record.status as 'present' | 'absent' | 'late'
+        class_name: record.class?.name || 'Unknown'
       })) || [];
 
       setAttendanceRecords(processedData);
@@ -86,10 +97,19 @@ const AttendanceManagement: React.FC = () => {
         .select('*')
         .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Classes fetch error:', error);
+        throw error;
+      }
+      
       setClasses(data || []);
     } catch (error) {
       console.error('Error fetching classes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch classes",
+        variant: "destructive",
+      });
     }
   };
 

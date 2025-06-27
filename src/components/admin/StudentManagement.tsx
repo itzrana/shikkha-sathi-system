@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
@@ -17,14 +16,19 @@ interface Student {
   id: string;
   name: string;
   email: string;
-  class: string;
+  class: string | null;
   created_at?: string;
+}
+
+interface ClassInfo {
+  id: string;
+  name: string;
 }
 
 const StudentManagement: React.FC = () => {
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
-  const [classes, setClasses] = useState<string[]>([]);
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -50,8 +54,20 @@ const StudentManagement: React.FC = () => {
         .eq('role', 'student')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setStudents(data || []);
+      if (error) {
+        console.error('Students fetch error:', error);
+        throw error;
+      }
+      
+      const studentsData: Student[] = (data || []).map(profile => ({
+        id: profile.id,
+        name: profile.name,
+        email: profile.email,
+        class: profile.class,
+        created_at: profile.created_at || undefined
+      }));
+      
+      setStudents(studentsData);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast({
@@ -66,13 +82,22 @@ const StudentManagement: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('classes')
-        .select('name')
+        .select('*')
         .order('name');
 
-      if (error) throw error;
-      setClasses(data?.map(c => c.name) || []);
+      if (error) {
+        console.error('Classes fetch error:', error);
+        throw error;
+      }
+      
+      setClasses(data || []);
     } catch (error) {
       console.error('Error fetching classes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch classes",
+        variant: "destructive",
+      });
     }
   };
 
@@ -82,7 +107,12 @@ const StudentManagement: React.FC = () => {
       if (editingStudent) {
         const { error } = await supabase
           .from('profiles')
-          .update(data)
+          .update({
+            name: data.name,
+            email: data.email,
+            class: data.class,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', editingStudent.id);
 
         if (error) throw error;
@@ -92,19 +122,11 @@ const StudentManagement: React.FC = () => {
           description: "Student updated successfully",
         });
       } else {
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            ...data,
-            role: 'student',
-            id: crypto.randomUUID()
-          });
-
-        if (error) throw error;
-        
+        // For new students, we would need to create them through auth
+        // For now, we'll just show a message
         toast({
-          title: "Success",
-          description: "Student added successfully",
+          title: "Info",
+          description: "New students should register through the registration form",
         });
       }
       
@@ -151,7 +173,11 @@ const StudentManagement: React.FC = () => {
 
   const startEdit = (student: Student) => {
     setEditingStudent(student);
-    form.reset(student);
+    form.reset({
+      name: student.name,
+      email: student.email,
+      class: student.class || ''
+    });
     setIsAddingStudent(true);
   };
 
@@ -219,7 +245,7 @@ const StudentManagement: React.FC = () => {
                         </FormControl>
                         <SelectContent>
                           {classes.map((cls) => (
-                            <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                            <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -284,7 +310,7 @@ const StudentManagement: React.FC = () => {
                 <TableRow key={student.id}>
                   <TableCell className="font-medium">{student.name}</TableCell>
                   <TableCell>{student.email}</TableCell>
-                  <TableCell>{student.class}</TableCell>
+                  <TableCell>{student.class || 'Not assigned'}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm" onClick={() => startEdit(student)}>
@@ -303,6 +329,12 @@ const StudentManagement: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+          
+          {students.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No students found. Students can register through the registration form.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
