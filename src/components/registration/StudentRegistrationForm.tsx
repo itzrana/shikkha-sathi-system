@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,20 +9,51 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
+interface ClassInfo {
+  id: string;
+  name: string;
+}
+
 const StudentRegistrationForm: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     class: '',
   });
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchingClasses, setFetchingClasses] = useState(true);
   const { toast } = useToast();
 
-  const classes = [
-    'Class 6-A', 'Class 6-B', 'Class 7-A', 'Class 7-B', 
-    'Class 8-A', 'Class 8-B', 'Class 9-A', 'Class 9-B', 
-    'Class 10-A', 'Class 10-B'
-  ];
+  useEffect(() => {
+    fetchClasses();
+  }, []);
+
+  const fetchClasses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Classes fetch error:', error);
+        throw error;
+      }
+      
+      setClasses(data || []);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      toast({
+        title: "ত্রুটি / Error",
+        description: "ক্লাসের তালিকা লোড করতে সমস্যা হয়েছে।",
+        variant: "destructive",
+      });
+    } finally {
+      setFetchingClasses(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +66,8 @@ const StudentRegistrationForm: React.FC = () => {
           name: formData.name,
           email: formData.email,
           class: formData.class,
-          role: 'student'
+          role: 'student',
+          status: 'pending'
         });
 
       if (error) throw error;
@@ -45,7 +77,7 @@ const StudentRegistrationForm: React.FC = () => {
         description: "আপনার আবেদন সফলভাবে জমা দেওয়া হয়েছে। অনুমোদনের জন্য অপেক্ষা করুন।",
       });
 
-      setFormData({ name: '', email: '', class: '' });
+      setFormData({ name: '', email: '', password: '', class: '' });
     } catch (error) {
       console.error('Error submitting request:', error);
       toast({
@@ -92,15 +124,32 @@ const StudentRegistrationForm: React.FC = () => {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="password">পাসওয়ার্ড / Password *</Label>
+            <Input
+              id="password"
+              type="password"
+              required
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="••••••••"
+              minLength={6}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="class">শ্রেণী / Class *</Label>
-            <Select value={formData.class} onValueChange={(value) => setFormData({ ...formData, class: value })}>
+            <Select 
+              value={formData.class} 
+              onValueChange={(value) => setFormData({ ...formData, class: value })}
+              disabled={fetchingClasses}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="আপনার শ্রেণী নির্বাচন করুন" />
+                <SelectValue placeholder={fetchingClasses ? "লোড হচ্ছে..." : "আপনার শ্রেণী নির্বাচন করুন"} />
               </SelectTrigger>
               <SelectContent>
                 {classes.map((cls) => (
-                  <SelectItem key={cls} value={cls}>
-                    {cls}
+                  <SelectItem key={cls.id} value={cls.name}>
+                    {cls.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -110,7 +159,7 @@ const StudentRegistrationForm: React.FC = () => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isLoading}
+            disabled={isLoading || fetchingClasses}
           >
             {isLoading ? (
               <>

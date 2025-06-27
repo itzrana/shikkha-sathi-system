@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,25 +9,51 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
+interface SubjectInfo {
+  id: string;
+  name: string;
+}
+
 const TeacherRegistrationForm: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     subject: '',
   });
+  const [subjects, setSubjects] = useState<SubjectInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchingSubjects, setFetchingSubjects] = useState(true);
   const { toast } = useToast();
 
-  const subjects = [
-    'গণিত / Mathematics',
-    'বাংলা / Bengali',
-    'ইংরেজি / English',
-    'বিজ্ঞান / Science',
-    'সমাজ বিজ্ঞান / Social Studies',
-    'ধর্ম / Religion',
-    'শারীরিক শিক্ষা / Physical Education',
-    'তথ্য ও যোগাযোগ প্রযুক্তি / ICT'
-  ];
+  useEffect(() => {
+    fetchSubjects();
+  }, []);
+
+  const fetchSubjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Subjects fetch error:', error);
+        throw error;
+      }
+      
+      setSubjects(data || []);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+      toast({
+        title: "ত্রুটি / Error",
+        description: "বিষয়ের তালিকা লোড করতে সমস্যা হয়েছে।",
+        variant: "destructive",
+      });
+    } finally {
+      setFetchingSubjects(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +66,8 @@ const TeacherRegistrationForm: React.FC = () => {
           name: formData.name,
           email: formData.email,
           subject: formData.subject,
-          role: 'teacher'
+          role: 'teacher',
+          status: 'pending'
         });
 
       if (error) throw error;
@@ -50,7 +77,7 @@ const TeacherRegistrationForm: React.FC = () => {
         description: "আপনার আবেদন সফলভাবে জমা দেওয়া হয়েছে। অনুমোদনের জন্য অপেক্ষা করুন।",
       });
 
-      setFormData({ name: '', email: '', subject: '' });
+      setFormData({ name: '', email: '', password: '', subject: '' });
     } catch (error) {
       console.error('Error submitting request:', error);
       toast({
@@ -97,15 +124,32 @@ const TeacherRegistrationForm: React.FC = () => {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="teacher-password">পাসওয়ার্ড / Password *</Label>
+            <Input
+              id="teacher-password"
+              type="password"
+              required
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="••••••••"
+              minLength={6}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="subject">বিষয় / Subject *</Label>
-            <Select value={formData.subject} onValueChange={(value) => setFormData({ ...formData, subject: value })}>
+            <Select 
+              value={formData.subject} 
+              onValueChange={(value) => setFormData({ ...formData, subject: value })}
+              disabled={fetchingSubjects}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="আপনার বিষয় নির্বাচন করুন" />
+                <SelectValue placeholder={fetchingSubjects ? "লোড হচ্ছে..." : "আপনার বিষয় নির্বাচন করুন"} />
               </SelectTrigger>
               <SelectContent>
                 {subjects.map((subject) => (
-                  <SelectItem key={subject} value={subject}>
-                    {subject}
+                  <SelectItem key={subject.id} value={subject.name}>
+                    {subject.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -115,7 +159,7 @@ const TeacherRegistrationForm: React.FC = () => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isLoading}
+            disabled={isLoading || fetchingSubjects}
           >
             {isLoading ? (
               <>

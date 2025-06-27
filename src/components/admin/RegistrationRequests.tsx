@@ -42,7 +42,6 @@ const RegistrationRequests: React.FC = () => {
         throw error;
       }
       
-      // Filter out admin roles and cast to our interface
       const filteredData: PendingRequest[] = (data || [])
         .filter(request => request.role !== 'admin')
         .map(request => ({
@@ -73,24 +72,24 @@ const RegistrationRequests: React.FC = () => {
     setProcessingIds(prev => new Set(prev).add(request.id));
     
     try {
-      // First, insert the user into profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: crypto.randomUUID(), // Generate a new UUID for the profile
-          name: request.name,
-          email: request.email,
-          role: request.role,
-          class: request.class,
-          subject: request.subject
-        });
+      // First, create user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: request.email,
+        password: 'temp123456', // Temporary password, user should change it
+        options: {
+          data: {
+            name: request.name,
+            role: request.role
+          }
+        }
+      });
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw profileError;
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw authError;
       }
 
-      // Update request status
+      // Then, update request status
       const { error: updateError } = await supabase
         .from('pending_requests')
         .update({
@@ -106,7 +105,7 @@ const RegistrationRequests: React.FC = () => {
 
       toast({
         title: "অনুমোদিত / Approved",
-        description: `${request.name} এর আবেদন অনুমোদিত হয়েছে।`,
+        description: `${request.name} এর আবেদন অনুমোদিত হয়েছে। অস্থায়ী পাসওয়ার্ড: temp123456`,
       });
 
       // Remove from pending list
