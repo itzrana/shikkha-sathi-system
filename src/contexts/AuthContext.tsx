@@ -84,9 +84,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: data.email,
           name: data.name,
           role: data.role as 'admin' | 'teacher' | 'student',
-          phone: data.phone,
-          class: data.class,
-          subject: data.subject,
+          phone: data.phone || undefined,
+          class: data.class || undefined,
+          subject: data.subject || undefined,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at)
         } as User);
@@ -106,40 +106,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Special handling for demo admin account
       if (credentials.email === 'juwelsr57@gmail.com' && credentials.password === 'admin123') {
-        // Create demo admin user if doesn't exist
-        const { data: existingUser } = await supabase.auth.signInWithPassword({
-          email: credentials.email,
-          password: credentials.password
-        });
-
-        if (!existingUser.user) {
-          // If user doesn't exist, create it
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        try {
+          // Try to sign in first
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: credentials.email,
-            password: credentials.password,
-            options: {
-              data: {
-                name: 'Admin User',
-                role: 'admin'
-              }
-            }
+            password: credentials.password
           });
 
-          if (signUpError) {
-            throw signUpError;
-          }
+          if (signInError && signInError.message.includes('Invalid login credentials')) {
+            // If sign in fails, try to create the account
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              email: credentials.email,
+              password: credentials.password,
+              options: {
+                data: {
+                  name: 'Admin User',
+                  role: 'admin'
+                }
+              }
+            });
 
-          // Create profile for the new admin user
-          if (signUpData.user) {
-            await supabase
-              .from('profiles')
-              .insert({
-                id: signUpData.user.id,
-                name: 'Admin User',
+            if (signUpError) {
+              console.error('Sign up error:', signUpError);
+              throw signUpError;
+            }
+
+            // Create profile for the new admin user
+            if (signUpData.user) {
+              const { error: profileError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: signUpData.user.id,
+                  name: 'Admin User',
+                  email: credentials.email,
+                  role: 'admin'
+                });
+
+              if (profileError) {
+                console.error('Profile creation error:', profileError);
+              }
+
+              // Now try to sign in again
+              const { error: finalSignInError } = await supabase.auth.signInWithPassword({
                 email: credentials.email,
-                role: 'admin'
+                password: credentials.password
               });
+
+              if (finalSignInError) {
+                throw finalSignInError;
+              }
+            }
+          } else if (signInError) {
+            throw signInError;
           }
+        } catch (adminError) {
+          console.error('Admin login error:', adminError);
+          throw adminError;
         }
       } else {
         // Regular login

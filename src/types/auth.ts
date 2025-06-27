@@ -6,6 +6,8 @@ export interface User {
   role: 'admin' | 'teacher' | 'student';
   phone?: string;
   profileImage?: string;
+  class?: string;
+  subject?: string;
   createdAt: Date;
   updatedAt: Date;
 }
