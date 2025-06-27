@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { School, Loader2, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -23,8 +24,23 @@ const LoginForm: React.FC = () => {
 
     try {
       await login({ email, password });
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Login error:', err);
       setError('Invalid email or password / ভুল ইমেইল বা পাসওয়ার্ড');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string, role: string) => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      await login({ email: demoEmail, password: demoPassword });
+    } catch (err: any) {
+      console.error('Demo login error:', err);
+      setError(`Demo ${role} login failed. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -109,18 +125,30 @@ const LoginForm: React.FC = () => {
 
             <div className="pt-4 border-t border-gray-200">
               <Link to="/register">
-                <Button variant="outline" className="w-full h-12">
+                <Button variant="outline" className="w-full h-12 mb-4">
                   <UserPlus className="mr-2 h-4 w-4" />
                   নিবন্ধনের জন্য আবেদন / Apply for Registration
                 </Button>
               </Link>
-            </div>
 
-            <div className="text-center text-sm text-gray-600 mt-4">
-              <p>ডেমো লগইন / Demo Login:</p>
-              <p>Admin: admin@school.edu.bd</p>
-              <p>Teacher: teacher@school.edu.bd</p>
-              <p>Student: student@school.edu.bd</p>
+              {/* Demo Login Buttons */}
+              <div className="space-y-2">
+                <p className="text-center text-sm text-gray-600 font-semibold">
+                  ডেমো লগইন / Demo Login:
+                </p>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full h-10 text-sm bg-red-50 hover:bg-red-100 border-red-200"
+                  onClick={() => handleDemoLogin('juwelsr57@gmail.com', 'admin123', 'Admin')}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  ) : null}
+                  Admin Login (juwelsr57@gmail.com)
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -16,10 +16,15 @@ import RegistrationRequests from '@/components/admin/RegistrationRequests';
 import NotificationManagement from '@/components/admin/NotificationManagement';
 import ReportsPage from '@/components/admin/ReportsPage';
 import SettingsPage from '@/components/admin/SettingsPage';
+import ProfileSection from '@/components/profile/ProfileSection';
 
 const Layout: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  const handleProfileClick = () => {
+    setActiveTab('profile');
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -43,6 +48,9 @@ const Layout: React.FC = () => {
             <DashboardStats />
           </div>
         );
+      
+      case 'profile':
+        return <ProfileSection />;
       
       case 'registration-requests':
         return <RegistrationRequests />;
@@ -134,7 +142,7 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Navbar />
+      <Navbar onProfileClick={handleProfileClick} />
       <div className="flex">
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <main className="flex-1 p-8">

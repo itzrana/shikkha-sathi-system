@@ -13,7 +13,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { School, LogOut, User, Settings } from 'lucide-react';
 
-const Navbar: React.FC = () => {
+interface NavbarProps {
+  onProfileClick?: () => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ onProfileClick }) => {
   const { user, logout } = useAuth();
 
   const getRoleLabel = (role: string) => {
@@ -22,6 +26,12 @@ const Navbar: React.FC = () => {
       case 'teacher': return 'Teacher / শিক্ষক';
       case 'student': return 'Student / শিক্ষার্থী';
       default: return role;
+    }
+  };
+
+  const handleProfileClick = () => {
+    if (onProfileClick) {
+      onProfileClick();
     }
   };
 
@@ -64,7 +74,7 @@ const Navbar: React.FC = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="hover:bg-blue-50">
+                <DropdownMenuItem onClick={handleProfileClick} className="hover:bg-blue-50">
                   <User className="mr-2 h-4 w-4 text-blue-600" />
                   <span>Profile</span>
                 </DropdownMenuItem>

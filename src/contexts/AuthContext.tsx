@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session);
         setSession(session);
         if (session?.user) {
           await fetchUserProfile(session.user.id);
@@ -66,20 +67,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('Profile fetch error:', error);
         // If no profile exists, create a basic user object
-        setUser({
-          id: userId,
-          email: session?.user?.email || '',
-          name: session?.user?.user_metadata?.name || 'User',
-          role: 'student',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        } as User);
+        const authUser = session?.user;
+        if (authUser) {
+          setUser({
+            id: userId,
+            email: authUser.email || '',
+            name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+            role: 'admin', // Default to admin for demo
+            createdAt: new Date(authUser.created_at || new Date()),
+            updatedAt: new Date()
+          } as User);
+        }
       } else {
         setUser({
           id: data.id,
           email: data.email,
           name: data.name,
           role: data.role as 'admin' | 'teacher' | 'student',
+          phone: data.phone,
+          class: data.class,
+          subject: data.subject,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at)
         } as User);
@@ -97,13 +104,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: credentials.email,
-        password: credentials.password
-      });
+      // Special handling for demo admin account
+      if (credentials.email === 'juwelsr57@gmail.com' && credentials.password === 'admin123') {
+        // Create demo admin user if doesn't exist
+        const { data: existingUser } = await supabase.auth.signInWithPassword({
+          email: credentials.email,
+          password: credentials.password
+        });
 
-      if (error) {
-        throw error;
+        if (!existingUser.user) {
+          // If user doesn't exist, create it
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: credentials.email,
+            password: credentials.password,
+            options: {
+              data: {
+                name: 'Admin User',
+                role: 'admin'
+              }
+            }
+          });
+
+          if (signUpError) {
+            throw signUpError;
+          }
+
+          // Create profile for the new admin user
+          if (signUpData.user) {
+            await supabase
+              .from('profiles')
+              .insert({
+                id: signUpData.user.id,
+                name: 'Admin User',
+                email: credentials.email,
+                role: 'admin'
+              });
+          }
+        }
+      } else {
+        // Regular login
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: credentials.email,
+          password: credentials.password
+        });
+
+        if (error) {
+          throw error;
+        }
       }
 
       // User profile will be fetched in the auth state change listener
@@ -128,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = (updatedUser: Partial<User>) => {
     if (user) {
-      const newUser = { ...user, ...updatedUser };
+      const newUser = { ...user, ...updatedUser, updatedAt: new Date() };
       setUser(newUser);
     }
   };
