@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 import { Plus, Edit, Trash2, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import Swal from 'sweetalert2';
 
 interface ClassInfo {
   id: string;
@@ -68,9 +69,11 @@ const ClassManagement: React.FC = () => {
 
         if (error) throw error;
         
-        toast({
-          title: "Success",
-          description: "Class updated successfully",
+        await Swal.fire({
+          title: 'সফল!',
+          text: 'ক্লাস সফলভাবে আপডেট হয়েছে।',
+          icon: 'success',
+          confirmButtonText: 'ঠিক আছে'
         });
       } else {
         const { error } = await supabase
@@ -79,9 +82,11 @@ const ClassManagement: React.FC = () => {
 
         if (error) throw error;
         
-        toast({
-          title: "Success",
-          description: "Class added successfully",
+        await Swal.fire({
+          title: 'সফল!',
+          text: 'নতুন ক্লাস সফলভাবে যোগ করা হয়েছে।',
+          icon: 'success',
+          confirmButtonText: 'ঠিক আছে'
         });
       }
       
@@ -91,17 +96,31 @@ const ClassManagement: React.FC = () => {
       fetchClasses();
     } catch (error) {
       console.error('Error saving class:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save class",
-        variant: "destructive",
+      await Swal.fire({
+        title: 'ত্রুটি!',
+        text: 'ক্লাস সেভ করতে সমস্যা হয়েছে।',
+        icon: 'error',
+        confirmButtonText: 'ঠিক আছে'
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteClass = async (id: string) => {
+  const deleteClass = async (id: string, className: string) => {
+    const result = await Swal.fire({
+      title: 'ক্লাস মুছে ফেলুন',
+      text: `আপনি কি "${className}" ক্লাসটি মুছে ফেলতে চান?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'হ্যাঁ, মুছে ফেলুন',
+      cancelButtonText: 'বাতিল'
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       const { error } = await supabase
         .from('classes')
@@ -110,18 +129,21 @@ const ClassManagement: React.FC = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Class deleted successfully",
+      await Swal.fire({
+        title: 'মুছে ফেলা হয়েছে!',
+        text: 'ক্লাসটি সফলভাবে মুছে ফেলা হয়েছে।',
+        icon: 'success',
+        confirmButtonText: 'ঠিক আছে'
       });
       
       fetchClasses();
     } catch (error) {
       console.error('Error deleting class:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete class",
-        variant: "destructive",
+      await Swal.fire({
+        title: 'ত্রুটি!',
+        text: 'ক্লাস মুছতে সমস্যা হয়েছে।',
+        icon: 'error',
+        confirmButtonText: 'ঠিক আছে'
       });
     }
   };
@@ -219,7 +241,7 @@ const ClassManagement: React.FC = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => deleteClass(classInfo.id)}
+                        onClick={() => deleteClass(classInfo.id, classInfo.name)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

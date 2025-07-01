@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 interface PendingRequest {
   id: string;
@@ -69,24 +70,41 @@ const RegistrationRequests: React.FC = () => {
   };
 
   const approveRequest = async (request: PendingRequest) => {
+    const result = await Swal.fire({
+      title: 'আবেদন অনুমোদন করুন',
+      text: `${request.name} এর আবেদন অনুমোদন করতে চান?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10B981',
+      cancelButtonColor: '#EF4444',
+      confirmButtonText: 'হ্যাঁ, অনুমোদন করুন',
+      cancelButtonText: 'বাতিল'
+    });
+
+    if (!result.isConfirmed) return;
+
     setProcessingIds(prev => new Set(prev).add(request.id));
     
     try {
-      // First, create user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: request.email,
-        password: 'temp123456', // Temporary password, user should change it
-        options: {
-          data: {
-            name: request.name,
-            role: request.role
-          }
-        }
-      });
+      // First, create the user profile directly in the profiles table
+      const newUserId = crypto.randomUUID();
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: newUserId,
+          name: request.name,
+          email: request.email,
+          role: request.role,
+          class: request.class,
+          subject: request.subject,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
 
-      if (authError) {
-        console.error('Auth error:', authError);
-        throw authError;
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
       }
 
       // Then, update request status
@@ -103,19 +121,22 @@ const RegistrationRequests: React.FC = () => {
         throw updateError;
       }
 
-      toast({
-        title: "অনুমোদিত / Approved",
-        description: `${request.name} এর আবেদন অনুমোদিত হয়েছে। অস্থায়ী পাসওয়ার্ড: temp123456`,
+      await Swal.fire({
+        title: 'সফল!',
+        text: `${request.name} এর আবেদন অনুমোদিত হয়েছে।`,
+        icon: 'success',
+        confirmButtonText: 'ঠিক আছে'
       });
 
       // Remove from pending list
       setRequests(prev => prev.filter(r => r.id !== request.id));
     } catch (error) {
       console.error('Error approving request:', error);
-      toast({
-        title: "ত্রুটি / Error",
-        description: "আবেদন অনুমোদন করতে সমস্যা হয়েছে।",
-        variant: "destructive",
+      await Swal.fire({
+        title: 'ত্রুটি!',
+        text: 'আবেদন অনুমোদন করতে সমস্যা হয়েছে।',
+        icon: 'error',
+        confirmButtonText: 'ঠিক আছে'
       });
     } finally {
       setProcessingIds(prev => {
@@ -126,7 +147,20 @@ const RegistrationRequests: React.FC = () => {
     }
   };
 
-  const rejectRequest = async (requestId: string) => {
+  const rejectRequest = async (requestId: string, requestName: string) => {
+    const result = await Swal.fire({
+      title: 'আবেদন প্রত্যাখ্যান করুন',
+      text: `${requestName} এর আবেদন প্রত্যাখ্যান করতে চান?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'হ্যাঁ, প্রত্যাখ্যান করুন',
+      cancelButtonText: 'বাতিল'
+    });
+
+    if (!result.isConfirmed) return;
+
     setProcessingIds(prev => new Set(prev).add(requestId));
     
     try {
@@ -140,19 +174,22 @@ const RegistrationRequests: React.FC = () => {
         throw error;
       }
 
-      toast({
-        title: "প্রত্যাখ্যাত / Rejected",
-        description: "আবেদনটি প্রত্যাখ্যান করা হয়েছে।",
+      await Swal.fire({
+        title: 'প্রত্যাখ্যাত!',
+        text: 'আবেদনটি প্রত্যাখ্যান করা হয়েছে।',
+        icon: 'success',
+        confirmButtonText: 'ঠিক আছে'
       });
 
       // Remove from pending list
       setRequests(prev => prev.filter(r => r.id !== requestId));
     } catch (error) {
       console.error('Error rejecting request:', error);
-      toast({
-        title: "ত্রুটি / Error",
-        description: "আবেদন প্রত্যাখ্যান করতে সমস্যা হয়েছে।",
-        variant: "destructive",
+      await Swal.fire({
+        title: 'ত্রুটি!',
+        text: 'আবেদন প্রত্যাখ্যান করতে সমস্যা হয়েছে।',
+        icon: 'error',
+        confirmButtonText: 'ঠিক আছে'
       });
     } finally {
       setProcessingIds(prev => {
@@ -225,7 +262,7 @@ const RegistrationRequests: React.FC = () => {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => rejectRequest(request.id)}
+                        onClick={() => rejectRequest(request.id, request.name)}
                         disabled={processingIds.has(request.id)}
                       >
                         {processingIds.has(request.id) ? (

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,45 +17,135 @@ import {
   Clock
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import Swal from 'sweetalert2';
+
+interface DashboardStats {
+  totalStudents: number;
+  totalTeachers: number;
+  totalClasses: number;
+  pendingRequests: number;
+}
+
+interface ClassStats {
+  class: string;
+  totalStudents: number;
+  present: number;
+  absent: number;
+  rate: number;
+}
 
 const AdminDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    pendingRequests: 0
+  });
+  const [classStats, setClassStats] = useState<ClassStats[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const { toast } = useToast();
 
-  // Mock data
-  const todayStats = {
-    totalStudents: 1234,
-    totalTeachers: 56,
-    classesToday: 32,
-    presentToday: 1089,
-    absentToday: 145,
-    lateToday: 23,
-    attendanceRate: 88.2
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch students count
+      const { data: students, error: studentsError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'student');
+
+      if (studentsError) throw studentsError;
+
+      // Fetch teachers count
+      const { data: teachers, error: teachersError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'teacher');
+
+      if (teachersError) throw teachersError;
+
+      // Fetch classes count
+      const { data: classesData, error: classesError } = await supabase
+        .from('classes')
+        .select('*');
+
+      if (classesError) throw classesError;
+
+      // Fetch pending requests count
+      const { data: pendingRequests, error: pendingError } = await supabase
+        .from('pending_requests')
+        .select('id')
+        .eq('status', 'pending');
+
+      if (pendingError) throw pendingError;
+
+      setStats({
+        totalStudents: students?.length || 0,
+        totalTeachers: teachers?.length || 0,
+        totalClasses: classesData?.length || 0,
+        pendingRequests: pendingRequests?.length || 0
+      });
+
+      setClasses(classesData || []);
+
+      // Generate class-wise statistics
+      const classStatistics: ClassStats[] = (classesData || []).map(cls => {
+        const studentsInClass = (students || []).filter((student: any) => student.class === cls.name);
+        const totalStudents = studentsInClass.length;
+        const present = Math.floor(Math.random() * totalStudents); // Mock data for demo
+        const absent = totalStudents - present;
+        const rate = totalStudents > 0 ? Math.round((present / totalStudents) * 100) : 0;
+
+        return {
+          class: cls.name,
+          totalStudents,
+          present,
+          absent,
+          rate
+        };
+      });
+
+      setClassStats(classStatistics);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch dashboard data",
+        variant: "destructive",
+      });
+    }
   };
 
+  const exportData = async () => {
+    await Swal.fire({
+      title: 'Export Data',
+      text: 'Data export functionality is being prepared...',
+      icon: 'info',
+      confirmButtonText: 'OK'
+    });
+  };
+
+  // Mock weekly data for the chart
   const weeklyData = [
-    { day: 'Mon', present: 1120, absent: 114, late: 20 },
-    { day: 'Tue', present: 1098, absent: 136, late: 18 },
-    { day: 'Wed', present: 1156, absent: 78, late: 15 },
-    { day: 'Thu', present: 1089, absent: 145, late: 23 },
-    { day: 'Fri', present: 1201, absent: 33, late: 12 },
+    { day: 'Mon', present: Math.floor(stats.totalStudents * 0.9), absent: Math.floor(stats.totalStudents * 0.1), late: Math.floor(stats.totalStudents * 0.02) },
+    { day: 'Tue', present: Math.floor(stats.totalStudents * 0.88), absent: Math.floor(stats.totalStudents * 0.12), late: Math.floor(stats.totalStudents * 0.015) },
+    { day: 'Wed', present: Math.floor(stats.totalStudents * 0.93), absent: Math.floor(stats.totalStudents * 0.07), late: Math.floor(stats.totalStudents * 0.012) },
+    { day: 'Thu', present: Math.floor(stats.totalStudents * 0.87), absent: Math.floor(stats.totalStudents * 0.13), late: Math.floor(stats.totalStudents * 0.018) },
+    { day: 'Fri', present: Math.floor(stats.totalStudents * 0.95), absent: Math.floor(stats.totalStudents * 0.05), late: Math.floor(stats.totalStudents * 0.01) },
   ];
 
-  const classAttendance = [
-    { class: 'Class 6-A', totalStudents: 45, present: 42, absent: 3, rate: 93.3 },
-    { class: 'Class 6-B', totalStudents: 43, present: 38, absent: 5, rate: 88.4 },
-    { class: 'Class 7-A', totalStudents: 48, present: 45, absent: 3, rate: 93.8 },
-    { class: 'Class 7-B', totalStudents: 46, present: 41, absent: 5, rate: 89.1 },
-    { class: 'Class 8-A', totalStudents: 44, present: 40, absent: 4, rate: 90.9 },
-  ];
-
-  const recentAbsences = [
-    { student: 'আহমেদ করিম', class: 'Class 6-A', date: '2024-06-24', reason: 'Sick' },
-    { student: 'ফাতিমা খাতুন', class: 'Class 7-B', date: '2024-06-24', reason: 'Family emergency' },
-    { student: 'রহিম উদ্দিন', class: 'Class 8-A', date: '2024-06-24', reason: 'Medical appointment' },
-    { student: 'সালমা বেগম', class: 'Class 6-B', date: '2024-06-24', reason: 'Personal' },
-  ];
+  const averageAttendanceRate = classStats.length > 0 
+    ? Math.round(classStats.reduce((acc, curr) => acc + curr.rate, 0) / classStats.length)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -68,7 +158,7 @@ const AdminDashboard: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64"
           />
-          <Button variant="outline">
+          <Button variant="outline" onClick={exportData}>
             <Download className="mr-2 h-4 w-4" />
             Export Data
           </Button>
@@ -81,10 +171,10 @@ const AdminDashboard: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Present Today</p>
-                <p className="text-2xl font-bold text-green-600">{todayStats.presentToday}</p>
+                <p className="text-sm font-medium text-gray-600">Total Students</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.totalStudents}</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <Users className="h-8 w-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
@@ -93,10 +183,10 @@ const AdminDashboard: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Absent Today</p>
-                <p className="text-2xl font-bold text-red-600">{todayStats.absentToday}</p>
+                <p className="text-sm font-medium text-gray-600">Total Teachers</p>
+                <p className="text-2xl font-bold text-green-600">{stats.totalTeachers}</p>
               </div>
-              <XCircle className="h-8 w-8 text-red-600" />
+              <Users className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
@@ -105,10 +195,10 @@ const AdminDashboard: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Late Today</p>
-                <p className="text-2xl font-bold text-yellow-600">{todayStats.lateToday}</p>
+                <p className="text-sm font-medium text-gray-600">Total Classes</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.totalClasses}</p>
               </div>
-              <Clock className="h-8 w-8 text-yellow-600" />
+              <Calendar className="h-8 w-8 text-purple-600" />
             </div>
           </CardContent>
         </Card>
@@ -117,10 +207,10 @@ const AdminDashboard: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Attendance Rate</p>
-                <p className="text-2xl font-bold text-blue-600">{todayStats.attendanceRate}%</p>
+                <p className="text-sm font-medium text-gray-600">Pending Requests</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.pendingRequests}</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-blue-600" />
+              <Clock className="h-8 w-8 text-orange-600" />
             </div>
           </CardContent>
         </Card>
@@ -146,7 +236,7 @@ const AdminDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Class-wise Attendance */}
+      {/* Class-wise Statistics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -154,12 +244,12 @@ const AdminDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {classAttendance.map((item, index) => (
+              {classStats.map((item, index) => (
                 <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h4 className="font-medium">{item.class}</h4>
                     <p className="text-sm text-gray-600">
-                      Present: {item.present}/{item.totalStudents}
+                      Students: {item.totalStudents} | Present: {item.present}
                     </p>
                   </div>
                   <div className="text-right">
@@ -170,28 +260,43 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               ))}
+              {classStats.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No class data available. Add classes to see statistics.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Absences / সাম্প্রতিক অনুপস্থিতি</CardTitle>
+            <CardTitle>Overall Statistics / সামগ্রিক পরিসংখ্যান</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentAbsences.map((absence, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">{absence.student}</h4>
-                    <p className="text-sm text-gray-600">{absence.class}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{absence.date}</p>
-                    <Badge variant="outline">{absence.reason}</Badge>
-                  </div>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <h4 className="font-medium">Average Attendance Rate</h4>
+                  <p className="text-sm text-gray-600">Across all classes</p>
                 </div>
-              ))}
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-600">{averageAttendanceRate}%</p>
+                  <Badge variant={averageAttendanceRate >= 85 ? 'default' : 'destructive'}>
+                    {averageAttendanceRate >= 85 ? 'Excellent' : 'Needs Improvement'}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <h4 className="font-medium">Active Users</h4>
+                  <p className="text-sm text-gray-600">Students + Teachers</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-green-600">{stats.totalStudents + stats.totalTeachers}</p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -204,7 +309,7 @@ const AdminDashboard: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="h-20 text-left justify-start">
+            <Button className="h-20 text-left justify-start" onClick={exportData}>
               <div>
                 <div className="font-medium">Generate Report</div>
                 <div className="text-sm opacity-70">Create attendance reports</div>
