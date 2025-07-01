@@ -84,7 +84,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: data.email,
           name: data.name,
           role: data.role as 'admin' | 'teacher' | 'student',
-          phone: data.phone || undefined,
           class: data.class || undefined,
           subject: data.subject || undefined,
           createdAt: new Date(data.created_at),

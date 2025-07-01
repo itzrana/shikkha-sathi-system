@@ -212,6 +212,27 @@ export type Database = {
         }
         Relationships: []
       }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: number
+          role: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: number
+          role?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: number
+          role?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
