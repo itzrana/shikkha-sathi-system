@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session);
       setSession(session);
       if (session?.user) {
         fetchUserProfile(session.user.id);
@@ -58,6 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -66,20 +68,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Profile fetch error:', error);
-        // If no profile exists, create a basic user object
-        const authUser = session?.user;
-        if (authUser) {
-          setUser({
+        // If no profile exists, create a basic user object from session
+        if (session?.user) {
+          const basicUser: User = {
             id: userId,
-            email: authUser.email || '',
-            name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
             role: 'admin', // Default to admin for demo
-            createdAt: new Date(authUser.created_at || new Date()),
+            createdAt: new Date(session.user.created_at || new Date()),
             updatedAt: new Date()
-          } as User);
+          };
+          setUser(basicUser);
+          setIsAuthenticated(true);
         }
       } else {
-        setUser({
+        console.log('Profile data:', data);
+        const profileUser: User = {
           id: data.id,
           email: data.email,
           name: data.name,
@@ -88,12 +92,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           subject: data.subject || undefined,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at)
-        } as User);
+        };
+        setUser(profileUser);
+        setIsAuthenticated(true);
       }
-      
-      setIsAuthenticated(true);
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      // Still set a basic user to prevent infinite loading
+      if (session?.user) {
+        const basicUser: User = {
+          id: userId,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          role: 'admin',
+          createdAt: new Date(session.user.created_at || new Date()),
+          updatedAt: new Date()
+        };
+        setUser(basicUser);
+        setIsAuthenticated(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -113,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
 
           if (signInError && signInError.message.includes('Invalid login credentials')) {
+            console.log('Creating demo admin account...');
             // If sign in fails, try to create the account
             const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
               email: credentials.email,
@@ -130,6 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               throw signUpError;
             }
 
+            console.log('Demo admin account created:', signUpData);
+
             // Create profile for the new admin user
             if (signUpData.user) {
               const { error: profileError } = await supabase
@@ -145,15 +165,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.error('Profile creation error:', profileError);
               }
 
-              // Now try to sign in again
-              const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+              // Set user data immediately for demo
+              const demoUser: User = {
+                id: signUpData.user.id,
                 email: credentials.email,
-                password: credentials.password
-              });
-
-              if (finalSignInError) {
-                throw finalSignInError;
-              }
+                name: 'Admin User',
+                role: 'admin',
+                createdAt: new Date(),
+                updatedAt: new Date()
+              };
+              setUser(demoUser);
+              setIsAuthenticated(true);
             }
           } else if (signInError) {
             throw signInError;
