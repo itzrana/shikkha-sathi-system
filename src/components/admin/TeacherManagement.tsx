@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Trash2, Users, BookOpen } from 'lucide-react';
+import { Edit, Trash2, Users, BookOpen, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import Swal from 'sweetalert2';
 
 interface Teacher {
   id: string;
@@ -26,7 +26,7 @@ const TeacherManagement: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isAddingTeacher, setIsAddingTeacher] = useState(false);
+  const [isEditingTeacher, setIsEditingTeacher] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
 
   const form = useForm({
@@ -40,6 +40,29 @@ const TeacherManagement: React.FC = () => {
   useEffect(() => {
     fetchTeachers();
     fetchSubjects();
+    
+    // Set up real-time subscription to automatically refresh when new teachers are added
+    const channel = supabase
+      .channel('teachers-changes')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'profiles', filter: 'role=eq.teacher' },
+        () => {
+          console.log('New teacher added, refreshing list...');
+          fetchTeachers();
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: 'role=eq.teacher' },
+        () => {
+          console.log('Teacher updated, refreshing list...');
+          fetchTeachers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchTeachers = async () => {
@@ -77,54 +100,60 @@ const TeacherManagement: React.FC = () => {
   };
 
   const onSubmit = async (data: any) => {
+    if (!editingTeacher) return;
+    
     setLoading(true);
     try {
-      if (editingTeacher) {
-        const { error } = await supabase
-          .from('profiles')
-          .update(data)
-          .eq('id', editingTeacher.id);
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: data.name,
+          email: data.email,
+          subject: data.subject,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingTeacher.id);
 
-        if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "Teacher updated successfully",
-        });
-      } else {
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            ...data,
-            role: 'teacher',
-            id: crypto.randomUUID()
-          });
-
-        if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "Teacher added successfully",
-        });
-      }
+      if (error) throw error;
+      
+      await Swal.fire({
+        title: 'সফল!',
+        text: 'শিক্ষকের তথ্য সফলভাবে আপডেট হয়েছে।',
+        icon: 'success',
+        confirmButtonText: 'ঠিক আছে'
+      });
       
       form.reset();
-      setIsAddingTeacher(false);
+      setIsEditingTeacher(false);
       setEditingTeacher(null);
       fetchTeachers();
     } catch (error) {
       console.error('Error saving teacher:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save teacher",
-        variant: "destructive",
+      await Swal.fire({
+        title: 'ত্রুটি!',
+        text: 'শিক্ষকের তথ্য সংরক্ষণ করতে সমস্যা হয়েছে।',
+        icon: 'error',
+        confirmButtonText: 'ঠিক আছে'
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteTeacher = async (id: string) => {
+  const deleteTeacher = async (id: string, name: string) => {
+    const result = await Swal.fire({
+      title: 'শিক্ষক মুছুন',
+      text: `${name} কে মুছে দিতে চান? এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'হ্যাঁ, মুছুন',
+      cancelButtonText: 'বাতিল'
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -133,108 +162,43 @@ const TeacherManagement: React.FC = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Teacher deleted successfully",
+      await Swal.fire({
+        title: 'মুছে ফেলা হয়েছে!',
+        text: 'শিক্ষক সফলভাবে মুছে ফেলা হয়েছে।',
+        icon: 'success',
+        confirmButtonText: 'ঠিক আছে'
       });
       
       fetchTeachers();
     } catch (error) {
       console.error('Error deleting teacher:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete teacher",
-        variant: "destructive",
+      await Swal.fire({
+        title: 'ত্রুটি!',
+        text: 'শিক্ষক মুছতে সমস্যা হয়েছে।',
+        icon: 'error',
+        confirmButtonText: 'ঠিক আছে'
       });
     }
   };
 
   const startEdit = (teacher: Teacher) => {
     setEditingTeacher(teacher);
-    form.reset(teacher);
-    setIsAddingTeacher(true);
+    form.reset({
+      name: teacher.name,
+      email: teacher.email,
+      subject: teacher.subject
+    });
+    setIsEditingTeacher(true);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Teacher Management / শিক্ষক ব্যবস্থাপনা</h2>
-        <Sheet open={isAddingTeacher} onOpenChange={setIsAddingTeacher}>
-          <SheetTrigger asChild>
-            <Button onClick={() => {
-              setEditingTeacher(null);
-              form.reset();
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Teacher
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-[500px] sm:w-[500px]">
-            <SheetHeader>
-              <SheetTitle>
-                {editingTeacher ? 'Edit Teacher / শিক্ষক সম্পাদনা' : 'Add New Teacher / নতুন শিক্ষক যোগ করুন'}
-              </SheetTitle>
-            </SheetHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-6">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name / পূর্ণ নাম</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="রহিম আহমেদ" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email / ইমেইল</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" placeholder="teacher@school.com" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="subject"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Subject / বিষয়</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select subject" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {subjects.map((subject) => (
-                            <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Saving...' : (editingTeacher ? 'Update Teacher' : 'Add Teacher')}
-                </Button>
-              </form>
-            </Form>
-          </SheetContent>
-        </Sheet>
+        <Button onClick={fetchTeachers} variant="outline">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh / রিফ্রেশ
+        </Button>
       </div>
 
       {/* Teacher Statistics */}
@@ -293,7 +257,7 @@ const TeacherManagement: React.FC = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => deleteTeacher(teacher.id)}
+                        onClick={() => deleteTeacher(teacher.id, teacher.name)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -303,8 +267,81 @@ const TeacherManagement: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+
+          {teachers.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No teachers found. Teachers will appear here automatically when approved.
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Edit Teacher Sheet */}
+      <Sheet open={isEditingTeacher} onOpenChange={setIsEditingTeacher}>
+        <SheetContent className="w-[500px] sm:w-[500px]">
+          <SheetHeader>
+            <SheetTitle>Edit Teacher / শিক্ষক সম্পাদনা</SheetTitle>
+          </SheetHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name / পূর্ণ নাম</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="রহিম আহমেদ" required />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email / ইমেইল</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="teacher@school.com" required />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="subject"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject / বিষয়</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select subject" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Saving...' : 'Update Teacher'}
+              </Button>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Trash2, Users, GraduationCap } from 'lucide-react';
+import { Edit, Trash2, Users, GraduationCap, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import Swal from 'sweetalert2';
 
 interface Student {
   id: string;
@@ -30,7 +31,7 @@ const StudentManagement: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [isEditingStudent, setIsEditingStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   const form = useForm({
@@ -44,6 +45,29 @@ const StudentManagement: React.FC = () => {
   useEffect(() => {
     fetchStudents();
     fetchClasses();
+    
+    // Set up real-time subscription to automatically refresh when new students are added
+    const channel = supabase
+      .channel('students-changes')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'profiles', filter: 'role=eq.student' },
+        () => {
+          console.log('New student added, refreshing list...');
+          fetchStudents();
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: 'role=eq.student' },
+        () => {
+          console.log('Student updated, refreshing list...');
+          fetchStudents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchStudents = async () => {
@@ -102,51 +126,60 @@ const StudentManagement: React.FC = () => {
   };
 
   const onSubmit = async (data: any) => {
+    if (!editingStudent) return;
+    
     setLoading(true);
     try {
-      if (editingStudent) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            name: data.name,
-            email: data.email,
-            class: data.class,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingStudent.id);
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: data.name,
+          email: data.email,
+          class: data.class,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingStudent.id);
 
-        if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "Student updated successfully",
-        });
-      } else {
-        // For new students, we would need to create them through auth
-        // For now, we'll just show a message
-        toast({
-          title: "Info",
-          description: "New students should register through the registration form",
-        });
-      }
+      if (error) throw error;
+      
+      await Swal.fire({
+        title: 'সফল!',
+        text: 'শিক্ষার্থীর তথ্য সফলভাবে আপডেট হয়েছে।',
+        icon: 'success',
+        confirmButtonText: 'ঠিক আছে'
+      });
       
       form.reset();
-      setIsAddingStudent(false);
+      setIsEditingStudent(false);
       setEditingStudent(null);
       fetchStudents();
     } catch (error) {
       console.error('Error saving student:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save student",
-        variant: "destructive",
+      await Swal.fire({
+        title: 'ত্রুটি!',
+        text: 'শিক্ষার্থীর তথ্য সংরক্ষণ করতে সমস্যা হয়েছে।',
+        icon: 'error',
+        confirmButtonText: 'ঠিক আছে'
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteStudent = async (id: string) => {
+  const deleteStudent = async (id: string, name: string) => {
+    const result = await Swal.fire({
+      title: 'শিক্ষার্থী মুছুন',
+      text: `${name} কে মুছে দিতে চান? এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'হ্যাঁ, মুছুন',
+      cancelButtonText: 'বাতিল'
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -155,18 +188,21 @@ const StudentManagement: React.FC = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Student deleted successfully",
+      await Swal.fire({
+        title: 'মুছে ফেলা হয়েছে!',
+        text: 'শিক্ষার্থী সফলভাবে মুছে ফেলা হয়েছে।',
+        icon: 'success',
+        confirmButtonText: 'ঠিক আছে'
       });
       
       fetchStudents();
     } catch (error) {
       console.error('Error deleting student:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete student",
-        variant: "destructive",
+      await Swal.fire({
+        title: 'ত্রুটি!',
+        text: 'শিক্ষার্থী মুছতে সমস্যা হয়েছে।',
+        icon: 'error',
+        confirmButtonText: 'ঠিক আছে'
       });
     }
   };
@@ -178,89 +214,17 @@ const StudentManagement: React.FC = () => {
       email: student.email,
       class: student.class || ''
     });
-    setIsAddingStudent(true);
+    setIsEditingStudent(true);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Student Management / শিক্ষার্থী ব্যবস্থাপনা</h2>
-        <Sheet open={isAddingStudent} onOpenChange={setIsAddingStudent}>
-          <SheetTrigger asChild>
-            <Button onClick={() => {
-              setEditingStudent(null);
-              form.reset();
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Student
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-[500px] sm:w-[500px]">
-            <SheetHeader>
-              <SheetTitle>
-                {editingStudent ? 'Edit Student / শিক্ষার্থী সম্পাদনা' : 'Add New Student / নতুন শিক্ষার্থী যোগ করুন'}
-              </SheetTitle>
-            </SheetHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-6">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name / পূর্ণ নাম</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="আহমেদ করিম" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email / ইমেইল</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" placeholder="student@example.com" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="class"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Class / ক্লাস</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select class" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {classes.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Saving...' : (editingStudent ? 'Update Student' : 'Add Student')}
-                </Button>
-              </form>
-            </Form>
-          </SheetContent>
-        </Sheet>
+        <Button onClick={fetchStudents} variant="outline">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh / রিফ্রেশ
+        </Button>
       </div>
 
       {/* Student Statistics */}
@@ -319,7 +283,7 @@ const StudentManagement: React.FC = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => deleteStudent(student.id)}
+                        onClick={() => deleteStudent(student.id, student.name)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -332,11 +296,78 @@ const StudentManagement: React.FC = () => {
           
           {students.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              No students found. Students can register through the registration form.
+              No students found. Students will appear here automatically when approved.
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Student Sheet */}
+      <Sheet open={isEditingStudent} onOpenChange={setIsEditingStudent}>
+        <SheetContent className="w-[500px] sm:w-[500px]">
+          <SheetHeader>
+            <SheetTitle>Edit Student / শিক্ষার্থী সম্পাদনা</SheetTitle>
+          </SheetHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name / পূর্ণ নাম</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="আহমেদ করিম" required />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email / ইমেইল</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="student@example.com" required />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="class"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Class / ক্লাস</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select class" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {classes.map((cls) => (
+                          <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Saving...' : 'Update Student'}
+              </Button>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

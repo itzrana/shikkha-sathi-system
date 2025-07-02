@@ -111,7 +111,7 @@ const RegistrationRequests: React.FC = () => {
           const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
           if (listError) throw signUpError;
           
-          const existingUser = existingUsers.users.find(u => u.email === request.email);
+          const existingUser = existingUsers.users.find((u: any) => u.email === request.email);
           if (!existingUser) throw signUpError;
           
           // Use existing user's ID
@@ -140,7 +140,7 @@ const RegistrationRequests: React.FC = () => {
 
       await Swal.fire({
         title: 'সফল!',
-        text: `${request.name} এর আবেদন অনুমোদিত হয়েছে।`,
+        text: `${request.name} এর আবেদন অনুমোদিত হয়েছে এবং তালিকায় যোগ করা হয়েছে।`,
         icon: 'success',
         confirmButtonText: 'ঠিক আছে'
       });
