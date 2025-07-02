@@ -88,43 +88,29 @@ const RegistrationRequests: React.FC = () => {
     try {
       console.log('Starting approval process for:', request);
 
-      // Step 1: Create user account using Supabase Auth Admin API
-      const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
+      // Generate a random user ID for the new user
+      const userId = crypto.randomUUID();
       
-      const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
-        email: request.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
+      // Create profile directly without using admin API
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
           name: request.name,
+          email: request.email,
           role: request.role,
           class: request.class,
-          subject: request.subject
-        }
-      });
+          subject: request.subject,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
 
-      if (signUpError) {
-        console.error('Auth user creation error:', signUpError);
-        
-        // If user already exists, try to get the existing user
-        if (signUpError.message?.includes('already registered')) {
-          const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
-          if (listError) throw signUpError;
-          
-          const existingUser = existingUsers.users.find((u: any) => u.email === request.email);
-          if (!existingUser) throw signUpError;
-          
-          // Use existing user's ID
-          await createProfile(existingUser.id, request);
-        } else {
-          throw signUpError;
-        }
-      } else if (authData.user) {
-        // Create profile for new user
-        await createProfile(authData.user.id, request);
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
       }
 
-      // Step 2: Update request status
+      // Update request status
       const { error: updateError } = await supabase
         .from('pending_requests')
         .update({
@@ -165,25 +151,6 @@ const RegistrationRequests: React.FC = () => {
     }
   };
 
-  const createProfile = async (userId: string, request: PendingRequest) => {
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        name: request.name,
-        email: request.email,
-        role: request.role,
-        class: request.class,
-        subject: request.subject,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-    if (profileError) {
-      console.error('Profile creation error:', profileError);
-      throw profileError;
-    }
-  };
 
   const rejectRequest = async (requestId: string, requestName: string) => {
     const result = await Swal.fire({
