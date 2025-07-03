@@ -88,27 +88,14 @@ const RegistrationRequests: React.FC = () => {
     try {
       console.log('Starting approval process for:', request);
 
-      // First create the auth user account
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: request.email,
-        password: 'tempPassword123!', // They'll need to reset this
-        email_confirm: true
-      });
-
-      if (authError) {
-        console.error('Auth user creation error:', authError);
-        throw authError;
-      }
-
-      if (!authData.user) {
-        throw new Error('Failed to create auth user');
-      }
-
-      // Then create the profile with the auth user's ID
+      // Generate a user ID for the new user profile
+      const userId = crypto.randomUUID();
+      
+      // Create profile - admin can insert profiles for other users
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
-          id: authData.user.id,
+          id: userId,
           name: request.name,
           email: request.email,
           role: request.role,
