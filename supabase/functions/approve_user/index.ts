@@ -21,24 +21,24 @@ serve(async (req) => {
     const { email, password, name, role, subject, class: userClass } = requestBody;
 
     // Validate required fields
-    if (!email || !password || !name || !role) {
+    if (!email || !name || !role) {
       console.error('Missing required fields');
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: email, password, name, role' }),
+        JSON.stringify({ error: 'Missing required fields: email, name, role' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Get environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     
     console.log('Environment check:', { 
       hasUrl: !!supabaseUrl, 
-      hasServiceKey: !!serviceRoleKey 
+      hasAnonKey: !!supabaseAnonKey
     });
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !supabaseAnonKey) {
       console.error('Missing environment variables');
       return new Response(
         JSON.stringify({ error: 'Missing environment configuration' }),
@@ -46,52 +46,19 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase admin client using service role key
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
+    // Create Supabase client with anon key (since RLS is disabled)
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    console.log('Creating user with admin client...');
+    // Generate a unique ID for the new user
+    const userId = crypto.randomUUID();
 
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm email
-      user_metadata: {
-        name,
-        role,
-        subject: subject || null,
-        class: userClass || null
-      }
-    });
+    console.log('Creating profile entry...');
 
-    if (authError) {
-      console.error('Auth user creation error:', authError);
-      return new Response(
-        JSON.stringify({ error: `Failed to create user: ${authError.message}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!authData.user) {
-      console.error('No user returned from auth creation');
-      return new Response(
-        JSON.stringify({ error: 'Failed to create user: No user data returned' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('User created in auth, now creating profile...');
-
-    // Create profile entry
-    const { error: profileError } = await supabaseAdmin
+    // Create profile entry directly (RLS is disabled so this should work)
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .insert({
-        id: authData.user.id,
+        id: userId,
         email,
         name,
         role,
@@ -99,30 +66,28 @@ serve(async (req) => {
         class: userClass || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      });
+      })
+      .select()
+      .single();
 
     if (profileError) {
       console.error('Profile creation error:', profileError);
-      
-      // If profile creation fails, delete the auth user to maintain consistency
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      
       return new Response(
         JSON.stringify({ error: `Failed to create profile: ${profileError.message}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('User and profile created successfully');
+    console.log('Profile created successfully:', profileData);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         user: {
-          id: authData.user.id,
-          email: authData.user.email,
-          name,
-          role
+          id: profileData.id,
+          email: profileData.email,
+          name: profileData.name,
+          role: profileData.role
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
