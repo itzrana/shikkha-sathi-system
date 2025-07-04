@@ -91,6 +91,14 @@ const RegistrationRequests: React.FC = () => {
       // Generate a temporary password for the new user
       const tempPassword = crypto.randomUUID().substring(0, 12);
 
+      console.log('Calling approve_user function with data:', {
+        email: request.email,
+        name: request.name,
+        role: request.role,
+        class: request.class,
+        subject: request.subject
+      });
+
       // Call the approve_user edge function
       const { data, error } = await supabase.functions.invoke('approve_user', {
         body: {
@@ -102,6 +110,8 @@ const RegistrationRequests: React.FC = () => {
           subject: request.subject
         }
       });
+
+      console.log('Edge function response:', { data, error });
 
       if (error) {
         console.error('Edge function error:', error);
@@ -155,6 +165,7 @@ const RegistrationRequests: React.FC = () => {
       });
     }
   };
+
 
 
   const rejectRequest = async (requestId: string, requestName: string) => {
