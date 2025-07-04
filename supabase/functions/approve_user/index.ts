@@ -13,27 +13,46 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, name, role, subject, class: userClass } = await req.json();
+    console.log('approve_user function called');
+    
+    const requestBody = await req.json();
+    console.log('Request body:', requestBody);
+    
+    const { email, password, name, role, subject, class: userClass } = requestBody;
 
     // Validate required fields
     if (!email || !password || !name || !role) {
+      console.error('Missing required fields');
       return new Response(
         JSON.stringify({ error: 'Missing required fields: email, password, name, role' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Get environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('Environment check:', { 
+      hasUrl: !!supabaseUrl, 
+      hasServiceKey: !!serviceRoleKey 
+    });
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('Missing environment variables');
+      return new Response(
+        JSON.stringify({ error: 'Missing environment configuration' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create Supabase admin client using service role key
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
       }
-    );
+    });
 
     console.log('Creating user with admin client...');
 
