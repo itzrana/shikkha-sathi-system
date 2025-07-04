@@ -46,7 +46,7 @@ export type Database = {
             foreignKeyName: "attendance_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -74,7 +74,7 @@ export type Database = {
           created_at: string | null
           id: string
           message: string
-          read: boolean
+          read: boolean | null
           recipient_id: string | null
           sender_id: string
           title: string
@@ -83,7 +83,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           message: string
-          read?: boolean
+          read?: boolean | null
           recipient_id?: string | null
           sender_id: string
           title: string
@@ -92,7 +92,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           message?: string
-          read?: boolean
+          read?: boolean | null
           recipient_id?: string | null
           sender_id?: string
           title?: string
@@ -124,7 +124,7 @@ export type Database = {
           id: string
           name: string
           role: string
-          status: string
+          status: Database["public"]["Enums"]["request_status"] | null
           subject: string | null
         }
         Insert: {
@@ -136,7 +136,7 @@ export type Database = {
           id?: string
           name: string
           role: string
-          status?: string
+          status?: Database["public"]["Enums"]["request_status"] | null
           subject?: string | null
         }
         Update: {
@@ -148,7 +148,7 @@ export type Database = {
           id?: string
           name?: string
           role?: string
-          status?: string
+          status?: Database["public"]["Enums"]["request_status"] | null
           subject?: string | null
         }
         Relationships: [
@@ -168,7 +168,7 @@ export type Database = {
           email: string
           id: string
           name: string
-          role: string
+          role: Database["public"]["Enums"]["user_role"]
           subject: string | null
           updated_at: string | null
         }
@@ -178,7 +178,7 @@ export type Database = {
           email: string
           id: string
           name: string
-          role: string
+          role?: Database["public"]["Enums"]["user_role"]
           subject?: string | null
           updated_at?: string | null
         }
@@ -188,9 +188,60 @@ export type Database = {
           email?: string
           id?: string
           name?: string
-          role?: string
+          role?: Database["public"]["Enums"]["user_role"]
           subject?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          address: string | null
+          class: string
+          created_at: string | null
+          date_of_birth: string | null
+          email: string | null
+          guardian_name: string
+          guardian_phone: string
+          id: string
+          name: string
+          phone: string | null
+          roll: string
+          section: string
+          status: string | null
+          student_id: string
+        }
+        Insert: {
+          address?: string | null
+          class: string
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          guardian_name: string
+          guardian_phone: string
+          id?: string
+          name: string
+          phone?: string | null
+          roll: string
+          section: string
+          status?: string | null
+          student_id: string
+        }
+        Update: {
+          address?: string | null
+          class?: string
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          guardian_name?: string
+          guardian_phone?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          roll?: string
+          section?: string
+          status?: string | null
+          student_id?: string
         }
         Relationships: []
       }
@@ -209,6 +260,51 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      teachers: {
+        Row: {
+          created_at: string | null
+          department: string
+          designation: string
+          email: string
+          experience: string
+          id: string
+          name: string
+          phone: string
+          qualification: string
+          status: string | null
+          subjects: string[] | null
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          department: string
+          designation: string
+          email: string
+          experience: string
+          id?: string
+          name: string
+          phone: string
+          qualification: string
+          status?: string | null
+          subjects?: string[] | null
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string | null
+          department?: string
+          designation?: string
+          email?: string
+          experience?: string
+          id?: string
+          name?: string
+          phone?: string
+          qualification?: string
+          status?: string | null
+          subjects?: string[] | null
+          teacher_id?: string
         }
         Relationships: []
       }

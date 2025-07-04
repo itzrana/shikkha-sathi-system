@@ -88,27 +88,32 @@ const RegistrationRequests: React.FC = () => {
     try {
       console.log('Starting approval process for:', request);
 
-      // Generate a user ID for the new user profile
-      const userId = crypto.randomUUID();
-      
-      // Create profile - admin can insert profiles for other users
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          name: request.name,
+      // Generate a temporary password for the new user
+      const tempPassword = crypto.randomUUID().substring(0, 12);
+
+      // Call the approve_user edge function
+      const { data, error } = await supabase.functions.invoke('approve_user', {
+        body: {
           email: request.email,
+          password: tempPassword,
+          name: request.name,
           role: request.role,
           class: request.class,
-          subject: request.subject,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+          subject: request.subject
+        }
+      });
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw profileError;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to create user');
       }
+
+      if (!data?.success) {
+        console.error('User creation failed:', data);
+        throw new Error(data?.error || 'Failed to create user');
+      }
+
+      console.log('User created successfully:', data.user);
 
       // Update request status
       const { error: updateError } = await supabase
@@ -126,7 +131,7 @@ const RegistrationRequests: React.FC = () => {
 
       await Swal.fire({
         title: 'সফল!',
-        text: `${request.name} এর আবেদন অনুমোদিত হয়েছে এবং তালিকায় যোগ করা হয়েছে।`,
+        text: `${request.name} এর আবেদন অনুমোদিত হয়েছে এবং অ্যাকাউন্ট তৈরি হয়েছে।\nঅস্থায়ী পাসওয়ার্ড: ${tempPassword}`,
         icon: 'success',
         confirmButtonText: 'ঠিক আছে'
       });
@@ -138,7 +143,7 @@ const RegistrationRequests: React.FC = () => {
       console.error('Error approving request:', error);
       await Swal.fire({
         title: 'ত্রুটি!',
-        text: 'আবেদন অনুমোদন করতে সমস্যা হয়েছে।',
+        text: `আবেদন অনুমোদন করতে সমস্যা হয়েছে: ${error.message}`,
         icon: 'error',
         confirmButtonText: 'ঠিক আছে'
       });
