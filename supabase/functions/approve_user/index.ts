@@ -105,29 +105,46 @@ serve(async (req) => {
       userId = authData.user!.id;
     }
 
-    // Create profile entry using the user's ID
-    const { data: profileData, error: profileError } = await supabaseAdmin
+    // Check if profile already exists
+    const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: userId,
-        email: email,
-        name: name,
-        role: role,
-        subject: subject || null,
-        class: userClass || null
-      })
-      .select()
-      .single();
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (profileError) {
-      console.error('Profile creation error:', profileError);
-      return new Response(
-        JSON.stringify({ error: `Failed to create profile: ${profileError.message}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let profileData;
+    
+    if (existingProfile) {
+      console.log('Profile already exists:', existingProfile.id);
+      profileData = existingProfile;
+    } else {
+      console.log('Creating new profile...');
+      // Create profile entry using the user's ID
+      const { data: newProfile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: email,
+          name: name,
+          role: role,
+          subject: subject || null,
+          class: userClass || null
+        })
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        return new Response(
+          JSON.stringify({ error: `Failed to create profile: ${profileError.message}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      profileData = newProfile;
     }
 
-    console.log('Profile created successfully:', profileData);
+    console.log('Profile handled successfully:', profileData);
 
     return new Response(
       JSON.stringify({ 
