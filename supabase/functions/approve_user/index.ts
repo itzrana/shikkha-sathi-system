@@ -60,34 +60,56 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Creating auth user...');
+    console.log('Checking if user already exists...');
 
-    // Create the auth user first
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: email,
-      password: password,
-      email_confirm: true,
-      user_metadata: {
-        name: name,
-        role: role
-      }
-    });
-
-    if (authError) {
-      console.error('Auth user creation error:', authError);
+    // First check if user already exists
+    const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (listError) {
+      console.error('Error checking existing users:', listError);
       return new Response(
-        JSON.stringify({ error: `Failed to create auth user: ${authError.message}` }),
+        JSON.stringify({ error: `Failed to check existing users: ${listError.message}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Auth user created:', authData.user?.id);
+    let userId: string;
+    const existingUser = existingUsers.users.find(user => user.email === email);
 
-    // Create profile entry using the auth user's ID
+    if (existingUser) {
+      console.log('User already exists:', existingUser.id);
+      userId = existingUser.id;
+    } else {
+      console.log('Creating new auth user...');
+      
+      // Create the auth user
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: email,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          name: name,
+          role: role
+        }
+      });
+
+      if (authError) {
+        console.error('Auth user creation error:', authError);
+        return new Response(
+          JSON.stringify({ error: `Failed to create auth user: ${authError.message}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Auth user created:', authData.user?.id);
+      userId = authData.user!.id;
+    }
+
+    // Create profile entry using the user's ID
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
-        id: authData.user!.id,
+        id: userId,
         email: email,
         name: name,
         role: role,
