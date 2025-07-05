@@ -54,20 +54,18 @@ serve(async (req) => {
     // Generate a unique ID for the new user
     const userId = crypto.randomUUID();
 
-    console.log('Creating profile entry...');
+    console.log('Creating profile entry with userId:', userId);
 
     // Create profile entry directly (RLS is disabled so this should work)
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .insert({
         id: userId,
-        email,
-        name,
-        role,
+        email: email,
+        name: name,
+        role: role,
         subject: subject || null,
-        class: userClass || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        class: userClass || null
       })
       .select()
       .single();
