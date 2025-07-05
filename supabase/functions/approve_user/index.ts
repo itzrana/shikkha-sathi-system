@@ -48,19 +48,46 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with anon key (since RLS is disabled)
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Create Supabase client with service role key for admin operations
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseServiceKey) {
+      console.error('Missing service role key');
+      return new Response(
+        JSON.stringify({ error: 'Missing service role key' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Generate a unique ID for the new user
-    const userId = crypto.randomUUID();
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Creating profile entry with userId:', userId);
+    console.log('Creating auth user...');
 
-    // Create profile entry directly (RLS is disabled so this should work)
-    const { data: profileData, error: profileError } = await supabase
+    // Create the auth user first
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email,
+      password: password,
+      email_confirm: true,
+      user_metadata: {
+        name: name,
+        role: role
+      }
+    });
+
+    if (authError) {
+      console.error('Auth user creation error:', authError);
+      return new Response(
+        JSON.stringify({ error: `Failed to create auth user: ${authError.message}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Auth user created:', authData.user?.id);
+
+    // Create profile entry using the auth user's ID
+    const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
-        id: userId,
+        id: authData.user!.id,
         email: email,
         name: name,
         role: role,
