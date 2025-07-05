@@ -14,6 +14,8 @@ serve(async (req) => {
 
   try {
     console.log('approve_user function called');
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
     
     const requestBody = await req.json();
     console.log('Request body:', requestBody);
