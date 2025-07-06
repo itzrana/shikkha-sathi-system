@@ -79,19 +79,13 @@ const AdminDashboard: React.FC = () => {
 
       if (classesError) throw classesError;
 
-      // Fetch pending requests count
-      const { data: pendingRequests, error: pendingError } = await supabase
-        .from('pending_requests')
-        .select('id')
-        .eq('status', 'pending');
-
-      if (pendingError) throw pendingError;
+      // No longer tracking pending requests
 
       setStats({
         totalStudents: students?.length || 0,
         totalTeachers: teachers?.length || 0,
         totalClasses: classesData?.length || 0,
-        pendingRequests: pendingRequests?.length || 0
+        pendingRequests: 0
       });
 
       setClasses(classesData || []);
@@ -207,10 +201,10 @@ const AdminDashboard: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pending Requests</p>
-                <p className="text-2xl font-bold text-orange-600">{stats.pendingRequests}</p>
+                <p className="text-sm font-medium text-gray-600">Active Users</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.totalStudents + stats.totalTeachers}</p>
               </div>
-              <Clock className="h-8 w-8 text-orange-600" />
+              <Users className="h-8 w-8 text-orange-600" />
             </div>
           </CardContent>
         </Card>

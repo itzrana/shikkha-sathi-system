@@ -33,7 +33,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
       case 'admin':
         return [
           ...commonItems,
-          { id: 'registration-requests', label: 'Registration Requests / নিবন্ধন আবেদন', icon: UserPlus },
+          { id: 'create-student', label: 'Create Student / শিক্ষার্থী তৈরি করুন', icon: UserPlus },
+          { id: 'create-teacher', label: 'Create Teacher / শিক্ষক তৈরি করুন', icon: UserCheck },
           { id: 'students', label: 'Students / শিক্ষার্থী', icon: Users },
           { id: 'teachers', label: 'Teachers / শিক্ষক', icon: UserCheck },
           { id: 'classes', label: 'Classes / ক্লাস', icon: BookOpen },

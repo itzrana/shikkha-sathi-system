@@ -114,53 +114,6 @@ export type Database = {
           },
         ]
       }
-      pending_requests: {
-        Row: {
-          approved_at: string | null
-          approved_by: string | null
-          class: string | null
-          created_at: string | null
-          email: string
-          id: string
-          name: string
-          role: string
-          status: Database["public"]["Enums"]["request_status"] | null
-          subject: string | null
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          class?: string | null
-          created_at?: string | null
-          email: string
-          id?: string
-          name: string
-          role: string
-          status?: Database["public"]["Enums"]["request_status"] | null
-          subject?: string | null
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          class?: string | null
-          created_at?: string | null
-          email?: string
-          id?: string
-          name?: string
-          role?: string
-          status?: Database["public"]["Enums"]["request_status"] | null
-          subject?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pending_requests_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           class: string | null

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { School, Loader2, UserPlus } from 'lucide-react';
+import { School, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -124,13 +124,6 @@ const LoginForm: React.FC = () => {
             </form>
 
             <div className="pt-4 border-t border-gray-200">
-              <Link to="/register">
-                <Button variant="outline" className="w-full h-12 mb-4">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  নিবন্ধনের জন্য আবেদন / Apply for Registration
-                </Button>
-              </Link>
-
               {/* Demo Login Buttons */}
               <div className="space-y-2">
                 <p className="text-center text-sm text-gray-600 font-semibold">

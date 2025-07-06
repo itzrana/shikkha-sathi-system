@@ -12,8 +12,9 @@ import StudentManagement from '@/components/admin/StudentManagement';
 import TeacherManagement from '@/components/admin/TeacherManagement';
 import ClassManagement from '@/components/admin/ClassManagement';
 import AttendanceManagement from '@/components/admin/AttendanceManagement';
-import RegistrationRequests from '@/components/admin/RegistrationRequests';
 import NotificationManagement from '@/components/admin/NotificationManagement';
+import CreateStudentForm from '@/components/admin/CreateStudentForm';
+import CreateTeacherForm from '@/components/admin/CreateTeacherForm';
 import ReportsPage from '@/components/admin/ReportsPage';
 import SettingsPage from '@/components/admin/SettingsPage';
 import ProfileSection from '@/components/profile/ProfileSection';
@@ -49,11 +50,15 @@ const Layout: React.FC = () => {
           </div>
         );
       
+      case 'create-student':
+        return <CreateStudentForm />;
+      
+      case 'create-teacher':
+        return <CreateTeacherForm />;
+      
       case 'profile':
         return <ProfileSection />;
       
-      case 'registration-requests':
-        return <RegistrationRequests />;
       
       case 'mark-attendance':
         return <AttendanceSheet />;
